@@ -1,0 +1,621 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{CLIENT_NAME}} — Weekly Performance Report</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --primary: #1a1a2e;
+    --accent: #e94560;
+    --accent-light: #ff6b81;
+    --success: #2ed573;
+    --danger: #ff4757;
+    --warning: #ffa502;
+    --bg: #ffffff;
+    --bg-alt: #f8f9fa;
+    --text: #2d3436;
+    --text-light: #636e72;
+    --border: #e9ecef;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  .container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Header */
+  .header {
+    background: var(--primary);
+    color: white;
+    padding: 40px 0 32px;
+    margin-bottom: 32px;
+  }
+
+  .header-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .brand-logo {
+    width: 48px;
+    height: 48px;
+    background: var(--accent);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    font-size: 20px;
+    color: white;
+  }
+
+  .brand-name {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .brand-sub {
+    font-size: 12px;
+    color: rgba(255,255,255,0.6);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+  }
+
+  .report-meta {
+    text-align: right;
+    font-size: 13px;
+    color: rgba(255,255,255,0.7);
+    line-height: 1.8;
+  }
+
+  .report-meta strong {
+    color: white;
+  }
+
+  .client-banner {
+    background: rgba(255,255,255,0.08);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-top: 24px;
+  }
+
+  .client-name {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.5px;
+  }
+
+  .client-details {
+    font-size: 13px;
+    color: rgba(255,255,255,0.6);
+    margin-top: 4px;
+  }
+
+  /* Section */
+  .section {
+    margin-bottom: 36px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--primary);
+    padding-bottom: 10px;
+    border-bottom: 3px solid var(--accent);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-title .icon {
+    font-size: 20px;
+  }
+
+  /* Metric Cards */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+
+  .metric-card {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .metric-card.highlight {
+    border-color: var(--accent);
+    background: linear-gradient(135deg, #fff5f7 0%, #fff 100%);
+  }
+
+  .metric-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    color: var(--text-light);
+    margin-bottom: 6px;
+  }
+
+  .metric-value {
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--primary);
+    line-height: 1.2;
+  }
+
+  .metric-change {
+    font-size: 12px;
+    font-weight: 600;
+    margin-top: 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 2px 8px;
+    border-radius: 20px;
+  }
+
+  .metric-change.up {
+    color: var(--success);
+    background: rgba(46, 213, 115, 0.1);
+  }
+
+  .metric-change.down {
+    color: var(--danger);
+    background: rgba(255, 71, 87, 0.1);
+  }
+
+  .metric-change.neutral {
+    color: var(--text-light);
+    background: rgba(99, 110, 114, 0.1);
+  }
+
+  /* Tables */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  .data-table thead th {
+    background: var(--primary);
+    color: white;
+    padding: 12px 14px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .data-table thead th:first-child {
+    border-radius: 8px 0 0 0;
+  }
+
+  .data-table thead th:last-child {
+    border-radius: 0 8px 0 0;
+  }
+
+  .data-table tbody td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .data-table tbody tr:hover {
+    background: var(--bg-alt);
+  }
+
+  .data-table tbody tr:last-child td:first-child {
+    border-radius: 0 0 0 8px;
+  }
+
+  .data-table tbody tr:last-child td:last-child {
+    border-radius: 0 0 8px 0;
+  }
+
+  .data-table .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .rank-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 24px;
+    background: var(--accent);
+    color: white;
+    border-radius: 50%;
+    font-size: 11px;
+    font-weight: 700;
+  }
+
+  /* Bar Charts (Pure CSS) */
+  .bar-chart {
+    margin: 16px 0;
+  }
+
+  .bar-row {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+    gap: 12px;
+  }
+
+  .bar-label {
+    width: 140px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text);
+    flex-shrink: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bar-track {
+    flex: 1;
+    height: 28px;
+    background: var(--bg-alt);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light));
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 10px;
+    min-width: 50px;
+    transition: width 0.3s ease;
+  }
+
+  .bar-fill-value {
+    font-size: 11px;
+    font-weight: 700;
+    color: white;
+  }
+
+  .bar-value {
+    width: 80px;
+    text-align: right;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text);
+    flex-shrink: 0;
+  }
+
+  /* Recommendations */
+  .recommendations {
+    background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--accent);
+    border-radius: 0 12px 12px 0;
+    padding: 24px;
+  }
+
+  .recommendation-item {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 16px;
+    align-items: flex-start;
+  }
+
+  .recommendation-item:last-child {
+    margin-bottom: 0;
+  }
+
+  .rec-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: var(--accent);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .rec-text {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text);
+  }
+
+  .rec-text strong {
+    color: var(--primary);
+  }
+
+  /* Footer */
+  .footer {
+    margin-top: 48px;
+    padding: 24px 0;
+    border-top: 2px solid var(--border);
+    text-align: center;
+    font-size: 12px;
+    color: var(--text-light);
+  }
+
+  .footer-brand {
+    font-weight: 600;
+    color: var(--accent);
+  }
+
+  /* WoW Comparison Grid */
+  .wow-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .wow-item {
+    background: var(--bg-alt);
+    border-radius: 10px;
+    padding: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .wow-metric {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .wow-values {
+    text-align: right;
+  }
+
+  .wow-current {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--primary);
+  }
+
+  .wow-prev {
+    font-size: 11px;
+    color: var(--text-light);
+    margin-top: 2px;
+  }
+
+  /* Print Styles */
+  @media print {
+    body { font-size: 12px; }
+    .container { max-width: 100%; padding: 0 16px; }
+    .header { padding: 24px 0 20px; margin-bottom: 20px; }
+    .section { margin-bottom: 24px; page-break-inside: avoid; }
+    .metric-grid { gap: 10px; }
+    .metric-value { font-size: 22px; }
+    .data-table { font-size: 11px; }
+    .footer { margin-top: 24px; }
+  }
+
+  @media (max-width: 768px) {
+    .metric-grid { grid-template-columns: repeat(2, 1fr); }
+    .wow-grid { grid-template-columns: 1fr; }
+    .header-inner { flex-direction: column; gap: 16px; }
+    .report-meta { text-align: left; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ===== HEADER ===== -->
+<div class="header">
+  <div class="container">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo">FA</div>
+        <div>
+          <div class="brand-name">Feisty Agency</div>
+          <div class="brand-sub">Performance Marketing</div>
+        </div>
+      </div>
+      <div class="report-meta">
+        <strong>Weekly Performance Report</strong><br>
+        {{DATE_RANGE}}<br>
+        Generated {{GENERATED_DATE}}
+      </div>
+    </div>
+    <div class="client-banner">
+      <div class="client-name">{{CLIENT_NAME}}</div>
+      <div class="client-details">Account: {{ACCOUNT_ID}} · Report Period: {{DATE_RANGE}}</div>
+    </div>
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- ===== KEY METRICS ===== -->
+  <div class="section">
+    <div class="section-title"><span class="icon">📊</span> Key Performance Metrics</div>
+    <div class="metric-grid">
+      <div class="metric-card highlight">
+        <div class="metric-label">Total Spend</div>
+        <div class="metric-value">{{TOTAL_SPEND}}</div>
+        <div class="metric-change {{SPEND_DIRECTION}}">{{SPEND_ARROW}} {{SPEND_CHANGE}}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Impressions</div>
+        <div class="metric-value">{{TOTAL_IMPRESSIONS}}</div>
+        <div class="metric-change {{IMPRESSIONS_DIRECTION}}">{{IMPRESSIONS_ARROW}} {{IMPRESSIONS_CHANGE}}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Reach</div>
+        <div class="metric-value">{{TOTAL_REACH}}</div>
+        <div class="metric-change {{REACH_DIRECTION}}">{{REACH_ARROW}} {{REACH_CHANGE}}</div>
+      </div>
+      <div class="metric-card highlight">
+        <div class="metric-label">Leads</div>
+        <div class="metric-value">{{TOTAL_LEADS}}</div>
+        <div class="metric-change {{LEADS_DIRECTION}}">{{LEADS_ARROW}} {{LEADS_CHANGE}}</div>
+      </div>
+    </div>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">CPM</div>
+        <div class="metric-value">{{CPM}}</div>
+        <div class="metric-change {{CPM_DIRECTION}}">{{CPM_ARROW}} {{CPM_CHANGE}}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">CPC</div>
+        <div class="metric-value">{{CPC}}</div>
+        <div class="metric-change {{CPC_DIRECTION}}">{{CPC_ARROW}} {{CPC_CHANGE}}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">CTR</div>
+        <div class="metric-value">{{CTR}}</div>
+        <div class="metric-change {{CTR_DIRECTION}}">{{CTR_ARROW}} {{CTR_CHANGE}}</div>
+      </div>
+      <div class="metric-card highlight">
+        <div class="metric-label">Cost per Lead</div>
+        <div class="metric-value">{{COST_PER_LEAD}}</div>
+        <div class="metric-change {{CPL_DIRECTION}}">{{CPL_ARROW}} {{CPL_CHANGE}}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== CAMPAIGN BREAKDOWN ===== -->
+  <div class="section">
+    <div class="section-title"><span class="icon">🎯</span> Campaign Breakdown</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Campaign</th>
+          <th class="num">Spend</th>
+          <th class="num">Impressions</th>
+          <th class="num">Clicks</th>
+          <th class="num">CTR</th>
+          <th class="num">Conversions</th>
+          <th class="num">CPA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{CAMPAIGN_ROWS}}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== SPEND BY CAMPAIGN CHART ===== -->
+  <div class="section">
+    <div class="section-title"><span class="icon">📈</span> Spend Distribution</div>
+    <div class="bar-chart">
+      {{SPEND_CHART_BARS}}
+    </div>
+  </div>
+
+  <!-- ===== ADSET BREAKDOWN ===== -->
+  <div class="section">
+    <div class="section-title"><span class="icon">🔍</span> Ad Set Breakdown</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Ad Set</th>
+          <th>Campaign</th>
+          <th class="num">Spend</th>
+          <th class="num">Impressions</th>
+          <th class="num">Conversions</th>
+          <th class="num">CPA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{ADSET_ROWS}}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== TOP PERFORMING ADS ===== -->
+  <div class="section">
+    <div class="section-title"><span class="icon">🏆</span> Top Performing Ads</div>
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Ad Name</th>
+          <th class="num">Impressions</th>
+          <th class="num">Clicks</th>
+          <th class="num">CTR</th>
+          <th class="num">Conversions</th>
+          <th class="num">CPA</th>
+        </tr>
+      </thead>
+      <tbody>
+        {{TOP_ADS_ROWS}}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ===== WEEK-OVER-WEEK ===== -->
+  <div class="section">
+    <div class="section-title"><span class="icon">📅</span> Week-over-Week Comparison</div>
+    <p style="font-size: 13px; color: var(--text-light); margin-bottom: 16px;">
+      Current: {{CURRENT_PERIOD}} vs Previous: {{PREVIOUS_PERIOD}}
+    </p>
+    <div class="wow-grid">
+      {{WOW_ITEMS}}
+    </div>
+  </div>
+
+  <!-- ===== RECOMMENDATIONS ===== -->
+  <div class="section">
+    <div class="section-title"><span class="icon">💡</span> Recommendations</div>
+    <div class="recommendations">
+      {{RECOMMENDATIONS}}
+    </div>
+  </div>
+
+</div>
+
+<!-- ===== FOOTER ===== -->
+<div class="footer">
+  <div class="container">
+    <p>Generated by <span class="footer-brand">Feisty Agency Reporting System</span></p>
+    <p style="margin-top: 4px;">This report was auto-generated and validated. Data sourced from Meta Ads API via Pipeboard.</p>
+    <p style="margin-top: 4px;">© {{YEAR}} Feisty Agency · feistyagency.com</p>
+  </div>
+</div>
+
+</body>
+</html>

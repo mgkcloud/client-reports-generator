@@ -1,0 +1,66 @@
+{
+  "snapshots": [
+    {
+      "period_start": "2026-03-21",
+      "period_end": "2026-04-03",
+      "generated_at": "2026-04-04T21:05:42.765375",
+      "data": {
+        "trt": {
+          "character_type": "trt",
+          "total_spend": 777.08,
+          "total_conversions": 31,
+          "total_impressions": 60764,
+          "total_clicks": 2477,
+          "adset_count": 1,
+          "avg_cpa": 25.07,
+          "blended_cpa": 25.07,
+          "ctr": 4.08,
+          "conv_rate": 1.25
+        },
+        "generic": {
+          "character_type": "generic",
+          "total_spend": 344.99,
+          "total_conversions": 6,
+          "total_impressions": 17040,
+          "total_clicks": 411,
+          "adset_count": 1,
+          "avg_cpa": 57.5,
+          "blended_cpa": 57.5,
+          "ctr": 2.41,
+          "conv_rate": 1.46
+        }
+      }
+    },
+    {
+      "period_start": "2026-03-21",
+      "period_end": "2026-04-03",
+      "generated_at": "2026-04-04T21:06:30.337450",
+      "data": {
+        "trt": {
+          "character_type": "trt",
+          "total_spend": 777.08,
+          "total_conversions": 31,
+          "total_impressions": 60764,
+          "total_clicks": 2477,
+          "adset_count": 1,
+          "avg_cpa": 25.07,
+          "blended_cpa": 25.07,
+          "ctr": 4.08,
+          "conv_rate": 1.25
+        },
+        "generic": {
+          "character_type": "generic",
+          "total_spend": 344.99,
+          "total_conversions": 6,
+          "total_impressions": 17040,
+          "total_clicks": 411,
+          "adset_count": 1,
+          "avg_cpa": 57.5,
+          "blended_cpa": 57.5,
+          "ctr": 2.41,
+          "conv_rate": 1.46
+        }
+      }
+    }
+  ]
+}

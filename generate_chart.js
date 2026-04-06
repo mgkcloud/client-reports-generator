@@ -1,0 +1,859 @@
+#!/usr/bin/env node
+/**
+ * generate_chart.js
+ * 
+ * Generates a 3-panel stacked campaign performance chart matching Will's reference style.
+ * Adapted for lead gen campaigns:
+ *   Panel 1: Cost Per Lead (CPL) line + Weekly Spend bars
+ *   Panel 2: Click-Through Rate (CTR) line + Weekly Spend bars
+ *   Panel 3: Leads per Week bar chart
+ * 
+ * Uses chartjs-node-canvas for each panel, then composites with raw canvas.
+ * 
+ * Usage:
+ *   node generate_chart.js [--since 2025-12-01] [--until 2026-02-05] [--output chart.png]
+ */
+
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
+const { createCanvas, loadImage } = require('canvas');
+const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+
+// ─── Config ────────────────────────────────────────────────────────────
+
+const CONFIG_PATH = path.join(__dirname, 'config.json');
+
+function loadConfig() {
+  return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+}
+
+function getPipboardToken() {
+  const config = loadConfig();
+  const tokenFile = config.pipeboard_token_file.replace('~', process.env.HOME);
+  return fs.readFileSync(tokenFile, 'utf8').trim();
+}
+
+// ─── Colors (matching reference chart) ─────────────────────────────────
+
+const COLORS = {
+  tealLine: '#2B9E8F',          // CPA/CPL line
+  tealLineLight: 'rgba(43,158,143,0.15)',
+  maroonLine: '#8B2252',        // ROAS/CTR line
+  maroonPoint: '#8B2252',
+  spendBar: 'rgba(255,200,120,0.6)',  // Weekly spend bars (light orange)
+  spendBarBorder: 'rgba(255,180,80,0.8)',
+  leadsBarMain: 'rgba(72,209,176,0.75)',  // Leads bars (teal/green)
+  leadsBarBorder: 'rgba(72,209,176,1)',
+  leadsBarHighlight: 'rgba(16,185,129,0.9)',
+  leadsTrendLine: 'rgba(147,197,253,0.6)',  // Light blue trend line behind bars
+  darkText: '#1E293B',
+  grayText: '#64748B',
+  lightGrid: 'rgba(0,0,0,0.06)',
+  panelBg: '#FAFBFC',
+  white: '#FFFFFF',
+  annotationBg: 'rgba(16,185,129,0.85)',  // Green badge
+  annotationBgWarn: 'rgba(251,191,36,0.85)',  // Yellow/orange badge
+  annotationBgBest: 'rgba(16,185,129,0.9)',  // Green badge for best
+  lastWeekHatch: 'rgba(200,200,200,0.4)', // Hatched pattern for partial week
+};
+
+// ─── Pipeboard API ─────────────────────────────────────────────────────
+
+function pipboardCall(toolName, args) {
+  const config = loadConfig();
+  const endpoint = new URL(config.pipeboard_endpoint);
+  const token = getPipboardToken();
+
+  const payload = JSON.stringify({
+    jsonrpc: '2.0', id: 1, method: 'tools/call',
+    params: { name: toolName, arguments: args }
+  });
+
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: endpoint.hostname, path: endpoint.pathname, method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      timeout: 60000
+    }, res => {
+      let d = ''; res.on('data', c => d += c);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(d);
+          if (json.error) reject(new Error(json.error.message));
+          else resolve(json.result || json);
+        } catch (e) { reject(e); }
+      });
+    });
+    req.on('error', reject);
+    req.write(payload); req.end();
+  });
+}
+
+// ─── Data Fetching ─────────────────────────────────────────────────────
+
+async function fetchWeeklyData(accountId, since, until, includePreviousWeeks = 8) {
+  // Extend date range backwards to include previous weeks for comparison
+  const sinceDate = new Date(since);
+  const weeksBack = includePreviousWeeks * 7;
+  sinceDate.setDate(sinceDate.getDate() - weeksBack);
+  const extendedSince = sinceDate.getFullYear() + '-' + String(sinceDate.getMonth() + 1).padStart(2, '0') + '-' + String(sinceDate.getDate()).padStart(2, '0');
+
+  console.log(`Fetching daily data (${extendedSince} to ${until}) for weekly aggregation (${includePreviousWeeks} weeks previous + current period)...`);
+
+  let dailyData = [];
+
+  // Try Pipeboard first
+  try {
+    const result = await pipboardCall('get_insights', {
+      object_id: accountId,
+      time_range: { since: extendedSince, until },
+      fields: 'spend,impressions,clicks,ctr,actions,action_values',
+      level: 'account',
+      time_breakdown: 'day'
+    });
+
+    const text = result.content
+      ? result.content.filter(c => c.type === 'text').map(c => c.text).join('')
+      : JSON.stringify(result);
+
+    // Check for rate limit / error response
+    if (text.includes('limit_exceeded') || text.includes('isError')) {
+      console.warn('  ⚠️ Pipeboard rate limit hit, falling back to direct Meta API...');
+    } else {
+      const parsed = JSON.parse(text);
+      dailyData = parsed.segmented_metrics || parsed.data || [];
+    }
+  } catch (e) {
+    console.warn(`  ⚠️ Pipeboard daily fetch failed: ${e.message}`);
+  }
+
+  // Fallback to direct Meta API
+  if (!dailyData.length || dailyData.length === 0) {
+    console.log('  📡 Fetching daily data directly from Meta API...');
+    try {
+      const fs = require('fs');
+      const { execSync } = require('child_process');
+      const token = fs.readFileSync(process.env.HOME + '/.secrets/meta-ads-token.txt', 'utf-8').trim();
+      const timeRange = encodeURIComponent(JSON.stringify({ since: extendedSince, until }));
+
+      let allRows = [];
+      let url = `https://graph.facebook.com/v22.0/${accountId}/insights?` +
+        `access_token=${token}&` +
+        `fields=spend,impressions,clicks,ctr,actions,action_values&` +
+        `time_range=${timeRange}&` +
+        `level=account&time_increment=1&limit=500`;
+
+      while (url) {
+        const raw = execSync(`curl -s --max-time 30 '${url}'`, { encoding: 'utf-8', timeout: 35000 });
+        const result = JSON.parse(raw);
+        if (result.error) {
+          console.warn(`  ⚠️ Meta API error: ${result.error.message}`);
+          break;
+        }
+        allRows.push(...(result.data || []));
+        url = result.paging && result.paging.next ? result.paging.next : null;
+      }
+      dailyData = allRows;
+      console.log(`  ✅ Got ${dailyData.length} daily segments from Meta API`);
+    } catch (e) {
+      console.warn(`  ⚠️ Direct Meta daily data also failed: ${e.message}`);
+    }
+  } else {
+    console.log(`  Got ${dailyData.length} daily segments`);
+  }
+
+  // Aggregate into weeks (Mon-Sun)
+  const weeks = {};
+  const segments = Array.isArray(dailyData) ? dailyData : [];
+
+  for (const seg of segments) {
+    const m = seg.metrics || seg;
+    const dateStr = m.date_start || m.date || '';
+    if (!dateStr) continue;
+
+    const date = new Date(dateStr);
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(date);
+    monday.setDate(diff);
+    // Use local date (not UTC) to avoid DST boundary bugs where toISOString() shifts the day
+    const weekKey = monday.getFullYear() + '-' + String(monday.getMonth() + 1).padStart(2, '0') + '-' + String(monday.getDate()).padStart(2, '0');
+
+    if (!weeks[weekKey]) {
+      weeks[weekKey] = { spend: 0, impressions: 0, clicks: 0, leads: 0, purchases: 0, revenue: 0, days: 0, weekStart: weekKey };
+    }
+
+    weeks[weekKey].spend += parseFloat(m.spend || 0);
+    weeks[weekKey].impressions += parseInt(m.impressions || 0);
+    weeks[weekKey].clicks += parseInt(m.clicks || 0);
+    weeks[weekKey].days += 1;
+
+    // Track both leads and purchases to determine campaign type
+    if (Array.isArray(m.actions)) {
+      for (const a of m.actions) {
+        if (a.action_type === 'lead') {
+          weeks[weekKey].leads += parseInt(a.value || 0);
+        }
+        if (a.action_type === 'omni_purchase' || a.action_type === 'web_in_store_purchase') {
+          weeks[weekKey].purchases += parseInt(a.value || 0);
+        }
+      }
+    }
+
+    // Get revenue for ROAS
+    if (Array.isArray(m.action_values)) {
+      for (const av of m.action_values) {
+        if (av.action_type === 'omni_purchase' || av.action_type === 'web_in_store_purchase') {
+          weeks[weekKey].revenue += parseFloat(av.value || 0);
+        }
+      }
+    }
+  }
+
+  // Sort and compute derived metrics
+  const sorted = Object.values(weeks).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+
+  // Determine if this is e-commerce (has purchases) or lead gen
+  const hasPurchases = sorted.some(w => w.purchases > 0);
+  const conversionType = hasPurchases ? 'purchase' : 'lead';
+  console.log(`  Detected campaign type: ${conversionType === 'purchase' ? 'e-commerce (purchases/ROAS)' : 'lead gen (leads/CPL)'}`);
+
+  return sorted.map((w, i) => {
+    const conversions = conversionType === 'purchase' ? w.purchases : w.leads;
+    const cpl = conversions > 0 ? w.spend / conversions : 0;
+    const ctr = w.impressions > 0 ? (w.clicks / w.impressions * 100) : 0;
+    const roas = w.revenue > 0 ? w.revenue / w.spend : 0;
+    const isPartial = w.days < 7;
+
+    // Generate week label
+    const startDate = new Date(w.weekStart);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + Math.min(w.days, 7) - 1);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const label = `Week ${i + 1}`;
+    const sublabel = `${monthNames[startDate.getMonth()]} ${startDate.getDate()}-${endDate.getDate()}`;
+
+    return {
+      ...w,
+      conversions,
+      cpl,
+      ctr,
+      roas,
+      isPartial,
+      weekNum: i + 1,
+      label,
+      sublabel,
+      conversionType
+    };
+  });
+}
+
+// ─── Chart Rendering ───────────────────────────────────────────────────
+
+async function renderPanel(panelConfig) {
+  const { width, height, data, title } = panelConfig;
+  const chartCanvas = new ChartJSNodeCanvas({ 
+    width, height, 
+    backgroundColour: COLORS.panelBg,
+    plugins: { requireLegacy: ['chartjs-plugin-datalabels'] }
+  });
+  
+  const buffer = await chartCanvas.renderToBuffer(panelConfig.chartConfig);
+  return buffer;
+}
+
+function buildCPLPanel(weeklyData, width, height) {
+  const labels = weeklyData.map(w => w.label);
+  const sublabels = weeklyData.map(w => w.sublabel);
+
+  // Determine conversion type from first week with data
+  const conversionTypeItem = weeklyData.find(w => w.conversionType);
+  const conversionType = conversionTypeItem && conversionTypeItem.conversionType || 'lead';
+  const isEcommerce = conversionType === 'purchase';
+
+  const maxCPL = Math.max(...weeklyData.map(w => w.cpl), 10);
+  const maxSpend = Math.max(...weeklyData.map(w => w.spend), 100);
+
+  // Find best and worst CPL weeks (only where there are conversions)
+  const withConversions = weeklyData.filter(w => (w.conversions || 0) > 0);
+  const bestCPL = withConversions.length ? withConversions.reduce((min, w) => w.cpl < min.cpl ? w : min) : null;
+  const worstCPL = withConversions.length ? withConversions.reduce((max, w) => w.cpl > max.cpl ? w : max) : null;
+
+  const costLabel = isEcommerce ? 'Cost Per Purchase (CPP)' : 'Cost Per Lead (CPL)';
+  const datasetLabel = isEcommerce ? 'Cost Per Purchase ($)' : 'Cost Per Lead ($)';
+
+  return {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Weekly Spend ($)',
+          data: weeklyData.map(w => w.spend),
+          backgroundColor: weeklyData.map(w => w.isPartial ? COLORS.lastWeekHatch : COLORS.spendBar),
+          borderColor: COLORS.spendBarBorder,
+          borderWidth: 1,
+          yAxisID: 'y1',
+          order: 2,
+          barPercentage: 0.85,
+          categoryPercentage: 0.9,
+        },
+        {
+          type: 'line',
+          label: datasetLabel,
+          data: weeklyData.map(w => w.cpl > 0 ? w.cpl : null),
+          borderColor: COLORS.tealLine,
+          backgroundColor: COLORS.tealLineLight,
+          borderWidth: 3,
+          pointRadius: 6,
+          pointBackgroundColor: COLORS.white,
+          pointBorderColor: COLORS.tealLine,
+          pointBorderWidth: 2.5,
+          yAxisID: 'y',
+          tension: 0.3,
+          order: 1,
+          fill: false,
+          spanGaps: true,
+        }
+      ]
+    },
+    options: {
+      responsive: false,
+      layout: { padding: { top: 30, right: 15, bottom: 5, left: 5 } },
+      plugins: {
+        title: { display: false },
+        legend: { display: false },
+        tooltip: { enabled: false },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { size: 9, weight: 'bold' },
+            color: COLORS.darkText,
+            callback: function(val, idx) { return [labels[idx], sublabels[idx]]; }
+          }
+        },
+        y: {
+          type: 'linear', position: 'left',
+          title: { display: true, text: costLabel, color: COLORS.tealLine, font: { size: 11, weight: 'bold' } },
+          grid: { color: COLORS.lightGrid },
+          ticks: { font: { size: 9 }, color: COLORS.grayText, callback: v => '$' + v.toFixed(0) },
+          min: 0, max: Math.ceil(maxCPL * 1.3),
+          beginAtZero: true,
+        },
+        y1: {
+          type: 'linear', position: 'right',
+          title: { display: true, text: 'Weekly Spend ($)', color: COLORS.spendBarBorder, font: { size: 11, weight: 'bold' } },
+          grid: { drawOnChartArea: false },
+          ticks: { font: { size: 9 }, color: COLORS.grayText, callback: v => '$' + v.toFixed(0) },
+          min: 0, max: Math.ceil(maxSpend * 1.2),
+          beginAtZero: true,
+        }
+      }
+    },
+    plugins: [{
+      id: 'cplAnnotations',
+      afterDraw: (chart) => {
+        const ctx = chart.ctx;
+        const meta = chart.getDatasetMeta(1); // line dataset
+
+        for (let i = 0; i < weeklyData.length; i++) {
+          const point = meta.data[i];
+          if (!point || weeklyData[i].cpl === 0) continue;
+
+          const x = point.x;
+          const y = point.y;
+          const val = '$' + weeklyData[i].cpl.toFixed(2);
+
+          const isBest = bestCPL && weeklyData[i].weekStart === bestCPL.weekStart;
+          const isWorst = worstCPL && weeklyData[i].weekStart === worstCPL.weekStart;
+
+          if (isBest || isWorst) {
+            // Draw badge
+            const badgeColor = isBest ? COLORS.annotationBgBest : COLORS.annotationBgWarn;
+            const textColor = '#FFFFFF';
+            const label = isBest ? val : val;
+            
+            ctx.save();
+            ctx.font = 'bold 11px Arial';
+            const tw = ctx.measureText(label).width;
+            const bw = tw + 14;
+            const bh = 22;
+            const bx = x - bw / 2;
+            const by = y - bh - 12;
+            
+            // Rounded rect
+            ctx.fillStyle = badgeColor;
+            ctx.beginPath();
+            ctx.roundRect(bx, by, bw, bh, 4);
+            ctx.fill();
+            
+            ctx.fillStyle = textColor;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, x, by + bh / 2);
+            
+            if (isWorst) {
+              // "WORST PERF." label above
+              ctx.font = 'bold 8px Arial';
+              ctx.fillStyle = COLORS.annotationBgWarn;
+              ctx.fillText('WORST PERF.', x, by - 10);
+            }
+            
+            ctx.restore();
+          } else {
+            // Small label
+            ctx.save();
+            ctx.font = '9px Arial';
+            ctx.fillStyle = COLORS.grayText;
+            ctx.textAlign = 'center';
+            ctx.fillText(val, x, y - 12);
+            ctx.restore();
+          }
+        }
+      }
+    }]
+  };
+}
+
+function buildCTRPanel(weeklyData, width, height) {
+  const labels = weeklyData.map(w => w.label);
+  const sublabels = weeklyData.map(w => w.sublabel);
+  const maxCTR = Math.max(...weeklyData.map(w => w.ctr), 5);
+  const maxSpend = Math.max(...weeklyData.map(w => w.spend), 100);
+  
+  const peakCTR = weeklyData.reduce((max, w) => w.ctr > max.ctr ? w : max);
+  
+  return {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Weekly Spend ($)',
+          data: weeklyData.map(w => w.spend),
+          backgroundColor: weeklyData.map(w => w.isPartial ? COLORS.lastWeekHatch : COLORS.spendBar),
+          borderColor: COLORS.spendBarBorder,
+          borderWidth: 1,
+          yAxisID: 'y1',
+          order: 2,
+          barPercentage: 0.85,
+          categoryPercentage: 0.9,
+        },
+        {
+          type: 'line',
+          label: 'CTR (%)',
+          data: weeklyData.map(w => w.ctr > 0 ? w.ctr : null),
+          borderColor: COLORS.maroonLine,
+          backgroundColor: 'rgba(139,34,82,0.1)',
+          borderWidth: 3,
+          pointRadius: 6,
+          pointBackgroundColor: COLORS.white,
+          pointBorderColor: COLORS.maroonLine,
+          pointBorderWidth: 2.5,
+          pointStyle: 'rectRounded',
+          yAxisID: 'y',
+          tension: 0.3,
+          order: 1,
+          fill: false,
+          spanGaps: true,
+        }
+      ]
+    },
+    options: {
+      responsive: false,
+      layout: { padding: { top: 25, right: 15, bottom: 5, left: 5 } },
+      plugins: {
+        title: { display: false },
+        legend: { display: false },
+        tooltip: { enabled: false },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { size: 9, weight: 'bold' },
+            color: COLORS.darkText,
+            callback: function(val, idx) { return [labels[idx], sublabels[idx]]; }
+          }
+        },
+        y: {
+          type: 'linear', position: 'left',
+          title: { display: true, text: 'Click-Through Rate (CTR)', color: COLORS.maroonLine, font: { size: 11, weight: 'bold' } },
+          grid: { color: COLORS.lightGrid },
+          ticks: { font: { size: 9 }, color: COLORS.grayText, callback: v => v.toFixed(1) + '%' },
+          min: 0, max: Math.ceil(maxCTR * 1.3),
+          beginAtZero: true,
+        },
+        y1: {
+          type: 'linear', position: 'right',
+          title: { display: true, text: 'Weekly Spend ($)', color: COLORS.spendBarBorder, font: { size: 11, weight: 'bold' } },
+          grid: { drawOnChartArea: false },
+          ticks: { font: { size: 9 }, color: COLORS.grayText, callback: v => '$' + v.toFixed(0) },
+          min: 0, max: Math.ceil(maxSpend * 1.2),
+          beginAtZero: true,
+        }
+      }
+    },
+    plugins: [{
+      id: 'ctrAnnotations',
+      afterDraw: (chart) => {
+        const ctx = chart.ctx;
+        const meta = chart.getDatasetMeta(1);
+        
+        for (let i = 0; i < weeklyData.length; i++) {
+          const point = meta.data[i];
+          if (!point || weeklyData[i].ctr === 0) continue;
+          
+          const x = point.x;
+          const y = point.y;
+          const val = weeklyData[i].ctr.toFixed(1) + '%';
+          const isPeak = weeklyData[i].weekStart === peakCTR.weekStart;
+          
+          if (isPeak) {
+            ctx.save();
+            ctx.font = 'bold 11px Arial';
+            const tw = ctx.measureText(val).width;
+            const bw = tw + 14;
+            const bh = 22;
+            ctx.fillStyle = COLORS.annotationBgBest;
+            ctx.beginPath();
+            ctx.roundRect(x - bw / 2, y - bh - 12, bw, bh, 4);
+            ctx.fill();
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillText(val, x, y - 13);
+            ctx.restore();
+          } else {
+            ctx.save();
+            ctx.font = 'bold 11px Arial';
+            ctx.fillStyle = '#374151'; // Darker gray for better readability
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillText(val, x, y - 6);
+            ctx.restore();
+          }
+        }
+      }
+    }]
+  };
+}
+
+function buildLeadsPanel(weeklyData, width, height) {
+  const labels = weeklyData.map(w => w.label);
+  const sublabels = weeklyData.map(w => w.sublabel);
+
+  // Determine conversion type from first week with data
+  const conversionTypeItem2 = weeklyData.find(w => w.conversionType);
+  const conversionType = conversionTypeItem2 && conversionTypeItem2.conversionType || 'lead';
+  const isEcommerce = conversionType === 'purchase';
+
+  // Use conversions (either leads or purchases)
+  const conversions = weeklyData.map(w => w.conversions);
+  const maxConversions = Math.max(...conversions, 10);
+
+  const peakWeek = weeklyData.reduce((max, w) => (w.conversions || 0) > (max.conversions || 0) ? w : max);
+
+  // Create trend line data using simple moving average
+  const trendData = weeklyData.map((w, i) => {
+    const window = 3;
+    let sum = 0, count = 0;
+    for (let j = Math.max(0, i - Math.floor(window / 2)); j <= Math.min(weeklyData.length - 1, i + Math.floor(window / 2)); j++) {
+      sum += weeklyData[j].conversions || 0;
+      count++;
+    }
+    return sum / count;
+  });
+
+  const panelLabel = isEcommerce ? 'Purchases per Week' : 'Leads per Week';
+  const datasetLabel = isEcommerce ? 'Purchases' : 'Leads';
+
+  return {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'line',
+          label: 'Trend',
+          data: trendData,
+          borderColor: COLORS.leadsTrendLine,
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          pointRadius: 0,
+          tension: 0.4,
+          order: 1,
+        },
+        {
+          type: 'bar',
+          label: datasetLabel,
+          data: conversions,
+          backgroundColor: weeklyData.map(w => {
+            if (w.isPartial) return COLORS.lastWeekHatch;
+            if ((w.conversions || 0) >= (peakWeek.conversions || 0) * 0.8) return COLORS.leadsBarHighlight;
+            return COLORS.leadsBarMain;
+          }),
+          borderColor: COLORS.leadsBarBorder,
+          borderWidth: 1,
+          yAxisID: 'y',
+          order: 2,
+          barPercentage: 0.75,
+          categoryPercentage: 0.85,
+        }
+      ]
+    },
+    options: {
+      responsive: false,
+      layout: { padding: { top: 25, right: 15, bottom: 5, left: 5 } },
+      plugins: {
+        title: { display: false },
+        legend: { display: false },
+        tooltip: { enabled: false },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { size: 9, weight: 'bold' },
+            color: COLORS.darkText,
+            callback: function(val, idx) { return [labels[idx], sublabels[idx]]; }
+          }
+        },
+        y: {
+          type: 'linear', position: 'left',
+          title: { display: true, text: panelLabel, color: COLORS.tealLine, font: { size: 11, weight: 'bold' } },
+          grid: { color: COLORS.lightGrid },
+          ticks: { font: { size: 9 }, color: COLORS.grayText, stepSize: Math.ceil(maxConversions / 5) },
+          min: 0, max: Math.ceil(maxConversions * 1.2),
+          beginAtZero: true,
+        }
+      }
+    },
+    plugins: [{
+      id: 'leadsAnnotations',
+      afterDraw: (chart) => {
+        const ctx = chart.ctx;
+        const meta = chart.getDatasetMeta(1); // bar dataset
+
+        for (let i = 0; i < weeklyData.length; i++) {
+          const bar = meta.data[i];
+          if (!bar || (weeklyData[i].conversions || 0) === 0) continue;
+
+          const x = bar.x;
+          const y = bar.y;
+          const val = String(weeklyData[i].conversions);
+          const isPeak = weeklyData[i].weekStart === peakWeek.weekStart;
+          const isHigh = (weeklyData[i].conversions || 0) >= (peakWeek.conversions || 0) * 0.8;
+
+          if (isPeak || isHigh) {
+            ctx.save();
+            ctx.font = 'bold 12px Arial';
+            const tw = ctx.measureText(val).width;
+            const bw = tw + 12;
+            const bh = 22;
+            ctx.fillStyle = isHigh ? COLORS.annotationBgBest : COLORS.annotationBgWarn;
+            ctx.beginPath();
+            ctx.roundRect(x - bw / 2, y - bh - 8, bw, bh, 4);
+            ctx.fill();
+            ctx.fillStyle = '#FFFFFF';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillText(val, x, y - 9);
+            ctx.restore();
+          } else {
+            ctx.save();
+            ctx.font = 'bold 12px Arial';
+            ctx.fillStyle = '#374151'; // Darker gray for better readability
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'alphabetic';
+            ctx.fillText(val, x, y - 4);
+            ctx.restore();
+          }
+        }
+      }
+    }]
+  };
+}
+
+// ─── Composite Chart ───────────────────────────────────────────────────
+
+async function generateStackedChart(weeklyData, clientName, since, until) {
+  const totalWidth = 1200;
+  const panelHeight = 300;
+  const titleHeight = 70;
+  const labelRowHeight = 30;
+  const totalHeight = titleHeight + (panelHeight * 3) + labelRowHeight;
+  
+  // Generate each panel
+  const cplConfig = buildCPLPanel(weeklyData, totalWidth, panelHeight);
+  const ctrConfig = buildCTRPanel(weeklyData, totalWidth, panelHeight);
+  const leadsConfig = buildLeadsPanel(weeklyData, totalWidth, panelHeight);
+
+  // Determine conversion type for legend
+  const conversionTypeItem3 = weeklyData.find(w => w.conversionType);
+  const conversionType = conversionTypeItem3 && conversionTypeItem3.conversionType || 'lead';
+  const isEcommerce = conversionType === 'purchase';
+
+  const chartRenderer = new ChartJSNodeCanvas({
+    width: totalWidth,
+    height: panelHeight,
+    backgroundColour: COLORS.panelBg
+  });
+
+  console.log(`  Rendering ${isEcommerce ? 'CPP' : 'CPL'} panel...`);
+  const cplBuffer = await chartRenderer.renderToBuffer(cplConfig);
+  console.log('  Rendering CTR panel...');
+  const ctrBuffer = await chartRenderer.renderToBuffer(ctrConfig);
+  console.log(`  Rendering ${isEcommerce ? 'Purchases' : 'Leads'} panel...`);
+  const leadsBuffer = await chartRenderer.renderToBuffer(leadsConfig);
+  
+  // Composite onto one canvas
+  console.log('  Compositing panels...');
+  const canvas = createCanvas(totalWidth, totalHeight);
+  const ctx = canvas.getContext('2d');
+  
+  // Background
+  ctx.fillStyle = COLORS.white;
+  ctx.fillRect(0, 0, totalWidth, totalHeight);
+  
+  // Title block
+  const weekCount = weeklyData.length;
+  const startFormatted = formatDate(since);
+  const endFormatted = formatDate(until);
+  
+  ctx.fillStyle = COLORS.darkText;
+  ctx.font = 'bold 18px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(`COMPLETE CAMPAIGN PERFORMANCE - ${weekCount} WEEKS`, totalWidth / 2, 28);
+  ctx.font = 'bold 14px Arial';
+  ctx.fillText(`${startFormatted} - ${endFormatted}`, totalWidth / 2, 52);
+  
+  // Light separator line
+  ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(40, titleHeight - 5);
+  ctx.lineTo(totalWidth - 40, titleHeight - 5);
+  ctx.stroke();
+  
+  // Load and draw panels
+  const cplImg = await loadImage(cplBuffer);
+  ctx.drawImage(cplImg, 0, titleHeight);
+  
+  // Separator
+  ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+  ctx.beginPath();
+  ctx.moveTo(60, titleHeight + panelHeight);
+  ctx.lineTo(totalWidth - 60, titleHeight + panelHeight);
+  ctx.stroke();
+  
+  const ctrImg = await loadImage(ctrBuffer);
+  ctx.drawImage(ctrImg, 0, titleHeight + panelHeight);
+  
+  ctx.beginPath();
+  ctx.moveTo(60, titleHeight + panelHeight * 2);
+  ctx.lineTo(totalWidth - 60, titleHeight + panelHeight * 2);
+  ctx.stroke();
+  
+  const leadsImg = await loadImage(leadsBuffer);
+  ctx.drawImage(leadsImg, 0, titleHeight + panelHeight * 2);
+  
+  // Bottom label
+  ctx.fillStyle = COLORS.grayText;
+  ctx.font = 'bold 12px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Weekly Period', totalWidth / 2, totalHeight - 10);
+  
+  // Legend bar at bottom
+  const legendY = totalHeight - 25;
+  const legendItems = [
+    { color: COLORS.tealLine, label: isEcommerce ? 'CPP ($)' : 'CPL ($)', type: 'line' },
+    { color: COLORS.maroonLine, label: 'CTR (%)', type: 'line' },
+    { color: COLORS.leadsBarMain, label: isEcommerce ? 'Purchases' : 'Leads', type: 'bar' },
+    { color: COLORS.spendBar, label: 'Spend ($)', type: 'bar' },
+  ];
+  
+  let lx = totalWidth / 2 - 200;
+  for (const item of legendItems) {
+    if (item.type === 'line') {
+      ctx.strokeStyle = item.color;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(lx, legendY);
+      ctx.lineTo(lx + 20, legendY);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = item.color;
+      ctx.fillRect(lx, legendY - 5, 20, 10);
+    }
+    ctx.fillStyle = COLORS.grayText;
+    ctx.font = '10px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(item.label, lx + 24, legendY + 4);
+    lx += 100;
+  }
+  
+  return canvas.toBuffer('image/png');
+}
+
+function formatDate(dateStr) {
+  const d = new Date(dateStr);
+  const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+// ─── Main ──────────────────────────────────────────────────────────────
+
+async function main() {
+  const args = process.argv.slice(2);
+  let since = '2025-12-01';
+  let until = '2026-02-05';
+  let output = path.join(__dirname, 'reports', 'campaign_chart.png');
+  let accountId = 'act_747429766205314';
+  
+  for (let i = 0; i < args.length; i++) {
+    switch (args[i]) {
+      case '--since': since = args[++i]; break;
+      case '--until': until = args[++i]; break;
+      case '--output': output = args[++i]; break;
+      case '--account': accountId = args[++i]; break;
+    }
+  }
+  
+  console.log(`\n📊 Generating 3-panel campaign chart`);
+  console.log(`   Account: ${accountId}`);
+  console.log(`   Period: ${since} to ${until}\n`);
+  
+  const weeklyData = await fetchWeeklyData(accountId, since, until);
+  console.log(`\n  ${weeklyData.length} weeks of data:`);
+  for (const w of weeklyData) {
+    console.log(`    ${w.label} (${w.sublabel}): $${w.spend.toFixed(2)} spend, ${w.leads} leads, $${w.cpl.toFixed(2)} CPL, ${w.ctr.toFixed(1)}% CTR${w.isPartial ? ' [partial]' : ''}`);
+  }
+  
+  console.log('\n  Rendering chart...');
+  const chartBuffer = await generateStackedChart(weeklyData, 'Box Divvy', since, until);
+  
+  // Ensure output dir exists
+  const dir = path.dirname(output);
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  
+  fs.writeFileSync(output, chartBuffer);
+  console.log(`\n✅ Chart saved: ${output} (${(chartBuffer.length / 1024).toFixed(1)} KB)`);
+  
+  return { buffer: chartBuffer, path: output };
+}
+
+// Export for use by generate_report.js
+module.exports = { fetchWeeklyData, generateStackedChart };
+
+if (require.main === module) {
+  main().catch(err => {
+    console.error('❌ Chart generation failed:', err.message);
+    process.exit(1);
+  });
+}

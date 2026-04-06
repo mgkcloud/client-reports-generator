@@ -1,0 +1,18 @@
+{
+  "campaigns": [
+    {
+      "name": "NeedleFree (Comfort-In)",
+      "account_id": "act_160907410994298",
+      "campaign_name": "PA - Sales - LP - All - CBO - 17.1",
+      "start_date": "2025-12-01",
+      "notes": "Campaign launched December 1, 2025"
+    },
+    {
+      "name": "Box Divvy",
+      "account_id": "act_747429766205314",
+      "campaign_name": "Hubster Lead Gen",
+      "start_date": "2025-12-11",
+      "notes": "Campaign launched December 11, 2025"
+    }
+  ]
+}

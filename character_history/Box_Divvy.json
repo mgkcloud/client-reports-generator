@@ -1,0 +1,23 @@
+{
+  "snapshots": [
+    {
+      "period_start": "2026-03-21",
+      "period_end": "2026-04-03",
+      "generated_at": "2026-04-04T21:06:12.726949",
+      "data": {
+        "generic": {
+          "character_type": "generic",
+          "total_spend": 1224.1399999999999,
+          "total_conversions": 113,
+          "total_impressions": 32323,
+          "total_clicks": 1622,
+          "adset_count": 4,
+          "avg_cpa": 13.55,
+          "blended_cpa": 10.83,
+          "ctr": 5.02,
+          "conv_rate": 6.97
+        }
+      }
+    }
+  ]
+}

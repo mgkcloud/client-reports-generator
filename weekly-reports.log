@@ -1,0 +1,356 @@
+2026-03-22 20:05:01 INFO     __main__: Skipping NeedleFree (Comfort-In) — report already exists for 2026-03-15 to 2026-03-21
+2026-03-22 20:05:01 INFO     __main__: ═══ Starting pipeline for Box Divvy ═══
+2026-03-22 20:05:01 INFO     __main__: Period: 2026-03-15 to 2026-03-21
+2026-03-22 20:05:01 INFO     __main__: Account: act_747429766205314
+2026-03-22 20:05:01 INFO     __main__: Step 1: Fetching data from Pipeboard...
+2026-03-22 20:05:01 INFO     data_fetcher: Fetching all data for act_747429766205314 (2026-03-15 to 2026-03-21)
+2026-03-22 20:05:01 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "act_747429766205314", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}) [attempt 1]
+2026-03-22 20:05:03 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:03 INFO     data_fetcher: Pipeboard call: get_campaigns({"account_id": "act_747429766205314", "fields": "name,status,objective"}) [attempt 1]
+2026-03-22 20:05:05 INFO     data_fetcher: Pipeboard response OK for get_campaigns
+2026-03-22 20:05:05 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591017060360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:05:07 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:07 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120241999728970360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:05:08 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:08 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853143111540359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:05:10 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:10 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853143111480359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:05:12 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:12 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853142838810359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:05:13 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:13 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853003357510359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:05:15 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:15 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852500327800359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:05:16 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:16 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852488287070359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:05:18 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:18 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852437062690359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:05:19 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:19 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852427600280359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:05:21 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:21 INFO     data_fetcher: Pipeboard call: get_adsets({"account_id": "act_747429766205314", "fields": "name,campaign_id,status"}) [attempt 1]
+2026-03-22 20:05:22 INFO     data_fetcher: Pipeboard response OK for get_adsets
+2026-03-22 20:05:22 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244615934000360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-22 20:05:24 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:24 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244615895150360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-22 20:05:26 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:26 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591088990360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-22 20:05:28 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:28 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591087830360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-22 20:05:29 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:29 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591086090360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-22 20:05:31 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:31 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591075950360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-22 20:05:32 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:32 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591057650360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-22 20:05:34 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:34 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591055500360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-22 20:05:36 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:36 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591054680360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-22 20:05:37 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:37 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591053480360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-22 20:05:39 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:39 INFO     data_fetcher: Pipeboard call: get_ads({"account_id": "act_747429766205314", "fields": "name,campaign_id,adset_id,status"}) [attempt 1]
+2026-03-22 20:05:41 INFO     data_fetcher: Pipeboard response OK for get_ads
+2026-03-22 20:05:41 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120246256256200360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-22 20:05:43 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:43 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120246256256220360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-22 20:05:45 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:45 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120246256256190360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-22 20:05:47 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:47 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120246256256160360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-22 20:05:48 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:48 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120246256256140360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-22 20:05:50 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:50 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120246256256170360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-22 20:05:51 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:51 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120246256256180360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-22 20:05:53 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:53 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120246256256210360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-22 20:05:55 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:55 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120245870612500360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-22 20:05:56 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:56 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120245879136080360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-22 20:05:58 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:58 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "act_747429766205314", "time_range": {"since": "2026-03-08", "until": "2026-03-14"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}) [attempt 1]
+2026-03-22 20:05:59 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:05:59 INFO     __main__:   Spend: 489.85, Impressions: 16892, Leads: 78
+2026-03-22 20:05:59 INFO     __main__: Step 2: Building HTML report...
+2026-03-22 20:05:59 INFO     __main__:   Report saved to: /tmp/client-reports-staging/Box_Divvy_2026-03-15_2026-03-21.html
+2026-03-22 20:05:59 INFO     __main__:   Copied to public: /home/mgk/code/life-os/tweet-portal/public/client-reports/Box_Divvy_2026-03-15_2026-03-21.html
+2026-03-22 20:05:59 INFO     __main__: Step 3: Validating report metrics...
+2026-03-22 20:05:59 INFO     validator: Validating report for act_747429766205314 (2026-03-15 to 2026-03-21)
+2026-03-22 20:05:59 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "act_747429766205314", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}) [attempt 1]
+2026-03-22 20:06:01 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:06:01 INFO     data_fetcher: Pipeboard call: get_campaigns({"account_id": "act_747429766205314", "fields": "name,status,objective"}) [attempt 1]
+2026-03-22 20:06:02 INFO     data_fetcher: Pipeboard response OK for get_campaigns
+2026-03-22 20:06:02 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591017060360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:06:04 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:06:04 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120241999728970360", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:06:06 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:06:06 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853143111540359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:06:07 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:06:07 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853143111480359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:06:09 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:06:09 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853142838810359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:06:10 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:06:10 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853003357510359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:06:12 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:06:12 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852500327800359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:06:13 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:06:13 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852488287070359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:06:15 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:06:15 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852437062690359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:06:16 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:06:16 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852427600280359", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-22 20:06:17 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-22 20:06:17 INFO     validator: Validation: approved (0 discrepancies)
+2026-03-22 20:06:17 INFO     __main__:   Validation: approved
+2026-03-22 20:06:17 INFO     __main__: Step 4: Delivering report...
+/home/mgk/.local/lib/python3.10/site-packages/google/api_core/_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.12) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+2026-03-22 20:06:20 INFO     googleapiclient.discovery_cache: file_cache is only supported with oauth2client<4.0.0
+2026-03-22 20:06:21 INFO     deliver: Found existing Reports folder: 1cOB-2V5eS2JmMsns5unJq8Q_Y59DralC
+2026-03-22 20:06:25 INFO     deliver: Uploaded new report: 2026-W11_Weekly_Report.html (ID: 1eZYg4dOLKdbcpWlbV0KSMKTnz_DNUR-O)
+2026-03-22 20:06:25 INFO     __main__:   ✅ Report delivered
+
+Box Divvy: delivered
+  Delivery: created
+  Report ID: 173
+2026-03-29 20:05:03 INFO     __main__: ═══ Starting pipeline for Box Divvy ═══
+2026-03-29 20:05:03 INFO     __main__: Period: 2026-03-22 to 2026-03-28
+2026-03-29 20:05:03 INFO     __main__: Account: act_747429766205314
+2026-03-29 20:05:03 INFO     __main__: Step 1: Fetching data from Pipeboard...
+2026-03-29 20:05:03 INFO     data_fetcher: Fetching all data for act_747429766205314 (2026-03-22 to 2026-03-28)
+2026-03-29 20:05:03 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "act_747429766205314", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}) [attempt 1]
+2026-03-29 20:05:05 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:05 INFO     data_fetcher: Pipeboard call: get_campaigns({"account_id": "act_747429766205314", "fields": "name,status,objective"}) [attempt 1]
+2026-03-29 20:05:07 INFO     data_fetcher: Pipeboard response OK for get_campaigns
+2026-03-29 20:05:08 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457230360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:05:10 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:10 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120246856518480360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:05:11 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:11 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591017060360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:05:13 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:13 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120241999728970360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:05:15 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:15 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853143111540359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:05:17 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:17 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853143111480359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:05:18 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:18 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853142838810359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:05:20 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:20 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853003357510359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:05:22 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:22 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852500327800359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:05:23 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:23 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852488287070359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:05:25 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:25 INFO     data_fetcher: Pipeboard call: get_adsets({"account_id": "act_747429766205314", "fields": "name,campaign_id,status"}) [attempt 1]
+2026-03-29 20:05:27 INFO     data_fetcher: Pipeboard response OK for get_adsets
+2026-03-29 20:05:27 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457640360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:05:30 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:30 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457420360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:05:32 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:32 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457060360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:05:33 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:33 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244615934000360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:05:36 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:36 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244615895150360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:05:38 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:38 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591088990360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:05:40 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:40 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591087830360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:05:42 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:42 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591086090360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:05:44 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:44 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591075950360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:05:46 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:46 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591057650360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:05:48 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:48 INFO     data_fetcher: Pipeboard call: get_ads({"account_id": "act_747429766205314", "fields": "name,campaign_id,adset_id,status"}) [attempt 1]
+2026-03-29 20:05:50 INFO     data_fetcher: Pipeboard response OK for get_ads
+2026-03-29 20:05:50 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457830360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:05:52 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:52 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457170360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:05:54 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:54 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457340360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:05:55 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:55 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457610360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:05:57 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:05:57 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457310360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:06:00 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:06:00 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457220360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:06:02 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:06:02 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457460360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:06:09 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:06:09 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457370360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:06:16 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:06:16 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082456930360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:06:23 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:06:23 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082458080360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:07:07 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:07 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "act_747429766205314", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}) [attempt 1]
+2026-03-29 20:07:11 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:11 INFO     __main__:   Spend: 548.61, Impressions: 15784, Leads: 64
+2026-03-29 20:07:11 INFO     __main__: Step 2: Building HTML report...
+2026-03-29 20:07:12 INFO     __main__:   Report saved to: /tmp/client-reports-staging/Box_Divvy_2026-03-22_2026-03-28.html
+2026-03-29 20:07:12 INFO     __main__:   Copied to public: /home/mgk/code/life-os/tweet-portal/public/client-reports/Box_Divvy_2026-03-22_2026-03-28.html
+2026-03-29 20:07:12 INFO     __main__: Step 3: Validating report metrics...
+2026-03-29 20:07:12 INFO     validator: Validating report for act_747429766205314 (2026-03-22 to 2026-03-28)
+2026-03-29 20:07:12 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "act_747429766205314", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}) [attempt 1]
+2026-03-29 20:07:14 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:14 INFO     data_fetcher: Pipeboard call: get_campaigns({"account_id": "act_747429766205314", "fields": "name,status,objective"}) [attempt 1]
+2026-03-29 20:07:16 INFO     data_fetcher: Pipeboard response OK for get_campaigns
+2026-03-29 20:07:16 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120247082457230360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:07:18 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:18 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120246856518480360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:07:20 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:20 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120244591017060360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:07:21 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:21 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "120241999728970360", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:07:23 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:23 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853143111540359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:07:25 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:25 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853143111480359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:07:26 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:26 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853142838810359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:07:28 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:28 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23853003357510359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:07:30 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:30 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852500327800359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:07:32 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:32 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "23852488287070359", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:07:35 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:07:35 INFO     validator: Validation: approved (0 discrepancies)
+2026-03-29 20:07:35 INFO     __main__:   Validation: approved
+2026-03-29 20:07:35 INFO     __main__: Step 4: Delivering report...
+/home/mgk/.local/lib/python3.10/site-packages/google/api_core/_python_version_support.py:275: FutureWarning: You are using a Python version (3.10.12) which Google will stop supporting in new releases of google.api_core once it reaches its end of life (2026-10-04). Please upgrade to the latest Python version, or at least Python 3.11, to continue receiving updates for google.api_core past that date.
+  warnings.warn(message, FutureWarning)
+2026-03-29 20:07:50 INFO     googleapiclient.discovery_cache: file_cache is only supported with oauth2client<4.0.0
+2026-03-29 20:08:33 ERROR    deliver: Failed to upload report: Unable to find the server at www.googleapis.com
+2026-03-29 20:08:35 ERROR    __main__:   ❌ Delivery failed: Unable to find the server at www.googleapis.com
+2026-03-29 20:08:35 INFO     __main__: ═══ Starting pipeline for NeedleFree (Comfort-In) ═══
+2026-03-29 20:08:35 INFO     __main__: Period: 2026-03-22 to 2026-03-28
+2026-03-29 20:08:35 INFO     __main__: Account: act_160907410994298
+2026-03-29 20:08:36 INFO     __main__: Step 1: Fetching data from Pipeboard...
+2026-03-29 20:08:36 INFO     data_fetcher: Fetching all data for act_160907410994298 (2026-03-22 to 2026-03-28)
+2026-03-29 20:08:38 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "act_160907410994298", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}) [attempt 1]
+2026-03-29 20:10:10 WARNING  data_fetcher: Pipeboard call failed (attempt 1/3): Command '['curl', '-s', '-X', 'POST', 'https://mcp.pipeboard.co/meta-ads-mcp', '-H', 'Authorization: Bearer pk_fcb6a222ac7544b19a2b9e013e532554', '-H', 'Content-Type: application/json', '-d', '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_insights", "arguments": {"object_id": "act_160907410994298", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}}}', '--max-time', '60']' timed out after 90 seconds
+2026-03-29 20:10:15 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "act_160907410994298", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}) [attempt 2]
+2026-03-29 20:11:57 WARNING  data_fetcher: Pipeboard call failed (attempt 2/3): Command '['curl', '-s', '-X', 'POST', 'https://mcp.pipeboard.co/meta-ads-mcp', '-H', 'Authorization: Bearer pk_fcb6a222ac7544b19a2b9e013e532554', '-H', 'Content-Type: application/json', '-d', '{"jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "get_insights", "arguments": {"object_id": "act_160907410994298", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}}}', '--max-time', '60']' timed out after 90 seconds
+2026-03-29 20:12:08 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "act_160907410994298", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}) [attempt 3]
+2026-03-29 20:12:37 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:12:37 INFO     data_fetcher: Pipeboard call: get_campaigns({"account_id": "act_160907410994298", "fields": "name,status,objective"}) [attempt 1]
+2026-03-29 20:12:39 INFO     data_fetcher: Pipeboard response OK for get_campaigns
+2026-03-29 20:12:39 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6878847613371", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:12:41 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:12:41 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6703057733371", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:12:43 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:12:43 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6629221413771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:12:45 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:12:45 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6614401774771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:12:47 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:12:47 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6610483125771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:12:48 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:12:48 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6608323744171", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:12:50 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:12:50 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6599551890771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:12:52 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:12:52 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6599245261371", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:12:53 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:12:53 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6595701961971", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:12:55 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:12:55 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6588634597771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:12:57 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:12:57 INFO     data_fetcher: Pipeboard call: get_adsets({"account_id": "act_160907410994298", "fields": "name,campaign_id,status"}) [attempt 1]
+2026-03-29 20:12:59 INFO     data_fetcher: Pipeboard response OK for get_adsets
+2026-03-29 20:12:59 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6878847656371", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:13:01 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:01 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6869666825371", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:13:02 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:02 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6867582102171", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:13:04 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:04 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6867580428371", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:13:06 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:06 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6867575328771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:13:08 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:08 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6864137418571", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:13:10 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:10 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6703057758771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:13:11 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:11 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6652393469971", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:13:13 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:13 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6629221414771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:13:15 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:15 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6629221414571", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,actions,cost_per_action_type", "level": "adset"}) [attempt 1]
+2026-03-29 20:13:16 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:16 INFO     data_fetcher: Pipeboard call: get_ads({"account_id": "act_160907410994298", "fields": "name,campaign_id,adset_id,status"}) [attempt 1]
+2026-03-29 20:13:18 INFO     data_fetcher: Pipeboard response OK for get_ads
+2026-03-29 20:13:18 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6923675335171", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:13:20 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:20 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6923673567771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:13:22 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:22 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6917749525771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:13:24 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:24 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6923675969371", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:13:25 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:25 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6917749525571", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:13:27 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:27 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6930408315371", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:13:29 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:29 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6923676100571", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:13:30 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:30 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6923673480571", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:13:32 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:32 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6917736857971", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:13:34 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:34 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6910621951571", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "ad"}) [attempt 1]
+2026-03-29 20:13:36 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:36 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "act_160907410994298", "time_range": {"since": "2026-03-15", "until": "2026-03-21"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}) [attempt 1]
+2026-03-29 20:13:37 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:37 INFO     __main__:   Spend: 553.57, Impressions: 36534, Leads: 2
+2026-03-29 20:13:37 INFO     __main__: Step 2: Building HTML report...
+2026-03-29 20:13:37 INFO     __main__:   Report saved to: /tmp/client-reports-staging/NeedleFree_(Comfort-In)_2026-03-22_2026-03-28.html
+2026-03-29 20:13:37 INFO     __main__:   Copied to public: /home/mgk/code/life-os/tweet-portal/public/client-reports/NeedleFree_(Comfort-In)_2026-03-22_2026-03-28.html
+2026-03-29 20:13:37 INFO     __main__: Step 3: Validating report metrics...
+2026-03-29 20:13:37 INFO     validator: Validating report for act_160907410994298 (2026-03-22 to 2026-03-28)
+2026-03-29 20:13:37 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "act_160907410994298", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type", "level": "account"}) [attempt 1]
+2026-03-29 20:13:39 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:39 INFO     data_fetcher: Pipeboard call: get_campaigns({"account_id": "act_160907410994298", "fields": "name,status,objective"}) [attempt 1]
+2026-03-29 20:13:41 INFO     data_fetcher: Pipeboard response OK for get_campaigns
+2026-03-29 20:13:41 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6878847613371", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:13:43 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:43 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6703057733371", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:13:44 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:44 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6629221413771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:13:46 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:46 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6614401774771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:13:48 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:48 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6610483125771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:13:49 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:49 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6608323744171", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:13:51 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:51 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6599551890771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:13:53 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:53 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6599245261371", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:13:54 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:54 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6595701961971", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:13:56 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:56 INFO     data_fetcher: Pipeboard call: get_insights({"object_id": "6588634597771", "time_range": {"since": "2026-03-22", "until": "2026-03-28"}, "fields": "spend,impressions,clicks,ctr,actions,cost_per_action_type", "level": "campaign"}) [attempt 1]
+2026-03-29 20:13:58 INFO     data_fetcher: Pipeboard response OK for get_insights
+2026-03-29 20:13:58 INFO     validator: Validation: approved (0 discrepancies)
+2026-03-29 20:13:58 INFO     __main__:   Validation: approved
+2026-03-29 20:13:58 INFO     __main__: Step 4: Delivering report...
+2026-03-29 20:13:58 INFO     googleapiclient.discovery_cache: file_cache is only supported with oauth2client<4.0.0
+2026-03-29 20:13:59 INFO     deliver: Found existing Reports folder: 1XJtvUUPWln7LbtM-lA3XH0ceZjuirz-s
+2026-03-29 20:14:02 INFO     deliver: Uploaded new report: 2026-W12_Weekly_Report.html (ID: 1QHf-wrsmbkYCwsFDBzMpEZ2BgPYFAEQG)
+2026-03-29 20:14:02 INFO     __main__:   ✅ Report delivered
+
+Box Divvy: delivery_failed
+  Delivery: error
+  Report ID: 176
+
+NeedleFree (Comfort-In): delivered
+  Delivery: created
+  Report ID: 177

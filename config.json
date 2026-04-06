@@ -1,0 +1,36 @@
+{
+  "clients": [
+    {
+      "name": "Box Divvy",
+      "account_id": "act_747429766205314",
+      "campaign_name": "Hubster Lead Gen",
+      "drive_folder": "10i9oSE7WYXcMdxAn4CPDmQdfJvyi7Nqp",
+      "report_day": "monday",
+      "active": true,
+      "campaign_filter": null
+    },
+    {
+      "name": "NeedleFree (Comfort-In)",
+      "account_id": "act_160907410994298",
+      "campaign_name": "PA - Sales - LP - All - CBO - 17.1",
+      "drive_folder": "10tk5XWaqQpTX4hBXRom0OTPfd5O0Khh6",
+      "report_day": "monday",
+      "active": true,
+      "campaign_filter": null
+    }
+  ],
+  "pipeboard_token_file": "~/.secrets/pipeboard-api-key.txt",
+  "pipeboard_endpoint": "https://mcp.pipeboard.co/meta-ads-mcp",
+  "google_creds": "~/.secrets/google-service-account.json",
+  "google_subject": "will@feistyagency.com",
+  "staging_dir": "/tmp/client-reports-staging",
+  "retry_attempts": 3,
+  "retry_delay_seconds": 5,
+  "validation_tolerances": {
+    "spend": 0.01,
+    "impressions": 0.05,
+    "clicks": 0.05,
+    "conversions": 0.05,
+    "reach": 0.10
+  }
+}
