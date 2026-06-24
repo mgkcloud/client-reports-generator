@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from data_fetcher import (
+    account_id_label,
     compute_date_range,
     fetch_all_data,
     get_previous_period_range,
@@ -109,9 +110,14 @@ class ReportPipeline:
 
         # Sync clients from config
         for client in self.config.get("clients", []):
+            account_label = account_id_label(client.get("account_ids") or client["account_id"])
             cursor.execute(
                 "INSERT OR IGNORE INTO clients (name, account_id, drive_folder, active) VALUES (?, ?, ?, ?)",
-                (client["name"], client["account_id"], client["drive_folder"], 1 if client.get("active", True) else 0)
+                (client["name"], account_label, client["drive_folder"], 1 if client.get("active", True) else 0)
+            )
+            cursor.execute(
+                "UPDATE clients SET account_id = ?, drive_folder = ?, active = ? WHERE name = ?",
+                (account_label, client["drive_folder"], 1 if client.get("active", True) else 0, client["name"])
             )
         self.db.commit()
 
@@ -187,7 +193,7 @@ class ReportPipeline:
 
         # ─── Basic placeholders ───
         html = html.replace("{{CLIENT_NAME}}", client["name"])
-        html = html.replace("{{ACCOUNT_ID}}", client["account_id"])
+        html = html.replace("{{ACCOUNT_ID}}", account_id_label(client.get("account_ids") or client["account_id"]))
         html = html.replace("{{DATE_RANGE}}", f"{dr['start']} to {dr['end']}")
         html = html.replace("{{GENERATED_DATE}}", datetime.now().strftime("%B %d, %Y at %I:%M %p"))
         html = html.replace("{{YEAR}}", str(datetime.now().year))
@@ -331,19 +337,19 @@ class ReportPipeline:
             start_date, end_date = compute_date_range("last_7d")
 
         client_name = client["name"]
-        account_id = client["account_id"]
+        account_id = client.get("account_ids") or client["account_id"]
         campaign_filter = client.get("campaign_filter")
 
         logger.info(f"═══ Starting pipeline for {client_name} ═══")
         logger.info(f"Period: {start_date} to {end_date}")
-        logger.info(f"Account: {account_id}")
+        logger.info(f"Account: {account_id_label(account_id)}")
 
         # Create DB record
         client_id = self.get_client_id(client_name)
         if not client_id:
             self.db.execute(
                 "INSERT INTO clients (name, account_id, drive_folder) VALUES (?, ?, ?)",
-                (client_name, account_id, client.get("drive_folder", ""))
+                (client_name, account_id_label(account_id), client.get("drive_folder", ""))
             )
             self.db.commit()
             client_id = self.get_client_id(client_name)
@@ -393,7 +399,7 @@ class ReportPipeline:
 
             # ─── Step 3: Validate ───
             logger.info("Step 3: Validating report metrics...")
-            validation = validate_report(data["overview"], account_id, start_date, end_date)
+            validation = validate_report(data["overview"], account_id, start_date, end_date, campaign_filter)
             self.save_validation(report_id, validation)
             self.update_report(report_id, status=validation.status)
             result["validation"] = validation.to_dict()

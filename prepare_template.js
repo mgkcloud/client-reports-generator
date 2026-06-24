@@ -6,7 +6,7 @@
  * tagged template (template_tagged.docx) by replacing hardcoded values with {tags}.
  * 
  * Structure:
- *   - Title: "Meta Ads Performance Audit"
+ *   - Title: "Reconciled Ads Performance Audit"
  *   - Client/Campaign/Period info
  *   - Executive Summary
  *   - Key Metrics — This Week (table)
@@ -192,7 +192,7 @@ function buildDocumentXml() {
 
   // ── Title
   parts.push(para(
-    run('Meta Ads Performance Audit', { bold: true, color: '1E293B', size: '44' }),
+    run('Reconciled Ads Performance Audit', { bold: true, color: '1E293B', size: '44' }),
     { style: 'Heading1', spacing: { before: '300', after: '200' } }
   ));
 

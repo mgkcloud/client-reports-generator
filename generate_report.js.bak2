@@ -1,0 +1,2063 @@
+#!/usr/bin/env node
+/**
+ * generate_report.js
+ * 
+ * Fetches Meta Ads data from Pipeboard API, generates a performance chart,
+ * and fills the docxtemplater tagged template to produce a DOCX report.
+ * 
+ * Usage:
+ *   node generate_report.js                          # Box Divvy, last 7 days
+ *   node generate_report.js --client "Box Divvy"     # specific client
+ *   node generate_report.js --since 2026-01-30 --until 2026-02-05
+ *   node generate_report.js --client "NeedleFree"
+ */
+
+const fs = require('fs');
+const path = require('path');
+const https = require('https');
+const { execSync } = require('child_process');
+const PizZip = require('pizzip');
+const Docxtemplater = require('docxtemplater');
+const ImageModule = require('docxtemplater-image-module-free');
+const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+const { fetchWeeklyData, generateStackedChart } = require('./generate_chart');
+
+// ─── Config ────────────────────────────────────────────────────────────
+
+const CONFIG_PATH = path.join(__dirname, 'config.json');
+const TEMPLATE_PATH = path.join(__dirname, 'template_tagged.docx');
+const TEMPLATE_ECOM_PATH = path.join(__dirname, 'template_tagged_ecom.docx');
+const REPORTS_DIR = path.join(__dirname, 'reports');
+
+function loadConfig() {
+  return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
+}
+
+function getPipboardToken() {
+  const config = loadConfig();
+  const tokenFile = config.pipeboard_token_file.replace('~', process.env.HOME);
+  return fs.readFileSync(tokenFile, 'utf8').trim();
+}
+
+function getClientStartDate(clientName) {
+  // Priority 1: Check campaign_dates.json for explicit start dates
+  const CAMPAIGN_DATES_PATH = path.join(__dirname, 'campaign_dates.json');
+  try {
+    const campaignData = JSON.parse(fs.readFileSync(CAMPAIGN_DATES_PATH, 'utf-8'));
+    const campaign = campaignData.campaigns.find(c =>
+      c.name.toLowerCase().includes(clientName.toLowerCase()) ||
+      clientName.toLowerCase().includes(c.name.toLowerCase())
+    );
+
+    if (campaign && campaign.start_date) {
+      console.log(`  Using campaign start date from campaign_dates.json: ${campaign.start_date} (${campaign.notes || ''})`);
+      return campaign.start_date;
+    }
+  } catch (err) {
+    console.warn(`  Warning: Could not read campaign_dates.json: ${err.message}`);
+  }
+
+  // Priority 2: Fall back to UGC clients JSON (video production dates, not campaign start)
+  const CLIENTS_JSON = path.join(process.env.HOME, 'code', 'life-os', 'clients', 'ugc_clients.json');
+  try {
+    const clientsData = JSON.parse(fs.readFileSync(CLIENTS_JSON, 'utf-8'));
+
+    const client = clientsData.clients.find(c =>
+      c.name.toLowerCase().includes(clientName.toLowerCase()) ||
+      clientName.toLowerCase().includes(c.name.toLowerCase())
+    );
+
+    if (client && client.batches && client.batches.length > 0) {
+      const firstBatch = client.batches[0];
+      if (firstBatch.week_ending) {
+        const weekEnding = new Date(firstBatch.week_ending);
+        const monday = new Date(weekEnding);
+        monday.setDate(monday.getDate() - 6);
+        const date = monday.toISOString().split('T')[0];
+        console.warn(`  Warning: Using video production date as fallback: ${date} (may not be actual campaign start)`);
+        return date;
+      }
+    }
+  } catch (err) {
+    console.warn(`  Warning: Could not fetch client start date from UGC clients JSON: ${err.message}`);
+  }
+
+  // Priority 3: Default to 60 days ago
+  const defaultDate = new Date();
+  defaultDate.setDate(defaultDate.getDate() - 60);
+  console.warn(`  Using default start date (60 days ago): ${defaultDate.toISOString().split('T')[0]}`);
+  console.warn(`  Please add correct start date to campaign_dates.json for client: ${clientName}`);
+  return defaultDate.toISOString().split('T')[0];
+}
+
+// ─── Pipeboard API ─────────────────────────────────────────────────────
+
+function pipboardCall(toolName, args) {
+  const config = loadConfig();
+  const endpoint = new URL(config.pipeboard_endpoint);
+  const token = getPipboardToken();
+
+  const payload = JSON.stringify({
+    jsonrpc: '2.0',
+    id: 1,
+    method: 'tools/call',
+    params: { name: toolName, arguments: args }
+  });
+
+  return new Promise((resolve, reject) => {
+    const req = https.request({
+      hostname: endpoint.hostname,
+      path: endpoint.pathname,
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(payload)
+      },
+      timeout: 60000
+    }, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const json = JSON.parse(data);
+          if (json.error) {
+            reject(new Error(`Pipeboard error: ${json.error.message || JSON.stringify(json.error)}`));
+          } else {
+            resolve(json.result || json);
+          }
+        } catch (e) {
+          reject(new Error(`Failed to parse response: ${data.substring(0, 500)}`));
+        }
+      });
+    });
+    req.on('error', reject);
+    req.on('timeout', () => { req.destroy(); reject(new Error('Request timeout')); });
+    req.write(payload);
+    req.end();
+  });
+}
+
+function extractContentText(result) {
+  if (result && result.content && Array.isArray(result.content)) {
+    return result.content
+      .filter(c => c.type === 'text')
+      .map(c => c.text)
+      .join('\n');
+  }
+  return JSON.stringify(result);
+}
+
+function parseInsightsJson(result) {
+  const text = extractContentText(result);
+  try {
+    const data = JSON.parse(text);
+    if (Array.isArray(data)) return data;
+    if (data && Array.isArray(data.data)) return data.data;
+    if (data && typeof data === 'object') return [data];
+    return [];
+  } catch {
+    console.warn('Could not parse insights JSON:', text.substring(0, 200));
+    return [];
+  }
+}
+
+// ─── Data Fetching ─────────────────────────────────────────────────────
+
+async function getAccountOverview(accountId, since, until, campaignFilter = null) {
+  console.log(`  Fetching account overview (${since} to ${until})${campaignFilter ? ` [campaign: ${campaignFilter}]` : ''}...`);
+
+  const level = campaignFilter ? 'campaign' : 'account';
+  const result = await pipboardCall('get_insights', {
+    object_id: accountId,
+    time_range: { since, until },
+    fields: 'spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type,campaign_name',
+    level: level
+  });
+
+  const rows = parseInsightsJson(result);
+
+  // If campaign filter is specified, filter the results to only include matching campaigns
+  let filteredRows = rows;
+  if (campaignFilter) {
+    filteredRows = rows.filter(row => {
+      const campaignName = row.campaign_name || '';
+      return campaignName.toLowerCase().includes(campaignFilter.toLowerCase());
+    });
+
+    if (filteredRows.length === 0) {
+      console.warn(`  Warning: No campaigns found matching "${campaignFilter}"`);
+      console.warn(`  Available campaigns:`, rows.map(r => r.campaign_name).join(', '));
+      return {};
+    }
+
+    // Aggregate data from multiple matching campaigns if needed
+    if (filteredRows.length > 1) {
+      console.log(`  Found ${filteredRows.length} campaigns matching filter, aggregating data...`);
+    }
+  }
+
+  const row = filteredRows[0];
+  if (!row) return {};
+
+  // Aggregate data from all matching campaigns
+  const aggregated = {
+    spend: 0,
+    impressions: 0,
+    reach: 0,
+    clicks: 0,
+    cpm: 0,
+    cpc: 0,
+    ctr: 0,
+    conversions: 0,
+    conversion_type: 'lead',
+    cost_per_conversion: 0,
+    roas: 0,
+    revenue: 0,
+    actions: [],
+    cost_per_action_type: []
+  };
+
+  for (const r of filteredRows) {
+    aggregated.spend += parseFloat(r.spend || 0);
+    aggregated.impressions += parseInt(r.impressions || 0);
+    aggregated.reach += parseInt(r.reach || 0);
+    aggregated.clicks += parseInt(r.clicks || 0);
+
+    // Merge actions
+    if (Array.isArray(r.actions)) {
+      aggregated.actions.push(...r.actions);
+    }
+
+    // Merge cost_per_action_type
+    if (Array.isArray(r.cost_per_action_type)) {
+      aggregated.cost_per_action_type.push(...r.cost_per_action_type);
+    }
+  }
+
+  // Calculate derived metrics
+  aggregated.cpm = aggregated.impressions > 0 ? aggregated.spend / aggregated.impressions * 1000 : 0;
+  aggregated.cpc = aggregated.clicks > 0 ? aggregated.spend / aggregated.clicks : 0;
+  aggregated.ctr = aggregated.impressions > 0 ? aggregated.clicks / aggregated.impressions * 100 : 0;
+
+  const overview = {
+    spend: aggregated.spend,
+    impressions: aggregated.impressions,
+    reach: aggregated.reach,
+    clicks: aggregated.clicks,
+    cpm: aggregated.cpm,
+    cpc: aggregated.cpc,
+    ctr: aggregated.ctr,
+    conversions: 0,
+    conversion_type: 'lead',
+    cost_per_conversion: 0,
+    roas: 0,
+    revenue: 0
+  };
+
+  // Extract conversions (prioritize purchases, fallback to leads)
+  for (const action of aggregated.actions) {
+    if (action.action_type === 'purchase') {
+      overview.conversions += parseInt(action.value || 0);
+      overview.conversion_type = 'purchase';
+    } else if (action.action_type === 'lead' && overview.conversion_type === 'lead') {
+      overview.conversions += parseInt(action.value || 0);
+    }
+  }
+
+  // Extract cost per conversion
+  for (const cost of aggregated.cost_per_action_type) {
+    if (overview.conversion_type === 'purchase' && cost.action_type === 'purchase') {
+      overview.cost_per_conversion = parseFloat(cost.value || 0);
+      break;
+    } else if (overview.conversion_type === 'lead' && cost.action_type === 'lead') {
+      overview.cost_per_conversion = parseFloat(cost.value || 0);
+      break;
+    }
+  }
+
+  // Calculate ROAS for e-commerce (if we have purchase data)
+  if (overview.conversion_type === 'purchase') {
+    for (const action of aggregated.actions) {
+      if (action.action_type === 'purchase' && action.value) {
+        overview.revenue = parseFloat(action.value || 0) * 50; // Placeholder: $50 avg order value
+        break;
+      }
+    }
+    overview.roas = overview.revenue > 0 ? overview.revenue / overview.spend : 0;
+  }
+
+  if (overview.conversions > 0 && overview.cost_per_conversion === 0) {
+    overview.cost_per_conversion = overview.spend / overview.conversions;
+  }
+
+  return overview;
+}
+
+/**
+ * Fetch account overview directly from Meta Graph API (bypasses Pipeboard).
+ * Used as fallback when Pipeboard rate limit is hit.
+ */
+async function getAccountOverviewDirect(accountId, since, until, campaignFilter = null) {
+  console.log(`  Fetching overview directly from Meta API (${since} to ${until})${campaignFilter ? ` [campaign: ${campaignFilter}]` : ''}...`);
+  const fs = require('fs');
+  const { execSync } = require('child_process');
+
+  try {
+    const token = fs.readFileSync(process.env.HOME + '/.secrets/meta-ads-token.txt', 'utf-8').trim();
+    const timeRange = encodeURIComponent(JSON.stringify({ since, until }));
+    const level = campaignFilter ? 'campaign' : 'account';
+
+    const url = `https://graph.facebook.com/v22.0/${accountId}/insights?` +
+      `access_token=${token}&` +
+      `fields=spend,impressions,reach,clicks,cpm,cpc,ctr,actions,cost_per_action_type,action_values,campaign_name&` +
+      `time_range=${timeRange}&` +
+      `level=${level}&limit=200`;
+
+    const rawResult = execSync(`curl -s --max-time 20 '${url}'`, { encoding: 'utf-8', timeout: 25000 });
+    const result = JSON.parse(rawResult);
+
+    if (result.error) {
+      console.warn(`  ⚠️ Meta API error: ${result.error.message}`);
+      return {};
+    }
+
+    let rows = result.data || [];
+    if (campaignFilter) {
+      rows = rows.filter(r => (r.campaign_name || '').toLowerCase().includes(campaignFilter.toLowerCase()));
+      if (rows.length === 0) {
+        console.warn(`  Warning: No campaigns matching "${campaignFilter}" via direct Meta API`);
+        return {};
+      }
+    }
+
+    // Aggregate across all matching rows
+    const agg = { spend: 0, impressions: 0, reach: 0, clicks: 0, actions: [], cost_per_action_type: [], action_values: [] };
+    for (const r of rows) {
+      agg.spend += parseFloat(r.spend || 0);
+      agg.impressions += parseInt(r.impressions || 0);
+      agg.reach += parseInt(r.reach || 0);
+      agg.clicks += parseInt(r.clicks || 0);
+      if (Array.isArray(r.actions)) agg.actions.push(...r.actions);
+      if (Array.isArray(r.cost_per_action_type)) agg.cost_per_action_type.push(...r.cost_per_action_type);
+      if (Array.isArray(r.action_values)) agg.action_values.push(...r.action_values);
+    }
+
+    const overview = {
+      spend: agg.spend,
+      impressions: agg.impressions,
+      reach: agg.reach,
+      clicks: agg.clicks,
+      cpm: agg.impressions > 0 ? agg.spend / agg.impressions * 1000 : 0,
+      cpc: agg.clicks > 0 ? agg.spend / agg.clicks : 0,
+      ctr: agg.impressions > 0 ? agg.clicks / agg.impressions * 100 : 0,
+      conversions: 0,
+      conversion_type: 'lead',
+      cost_per_conversion: 0,
+      roas: 0,
+      revenue: 0
+    };
+
+    // Aggregate conversions from action arrays
+    const actionTotals = {};
+    for (const a of agg.actions) {
+      actionTotals[a.action_type] = (actionTotals[a.action_type] || 0) + parseInt(a.value || 0);
+    }
+
+    // Use 'purchase' as canonical (all variants report same count, don't double-count)
+    if (actionTotals['purchase'] || actionTotals['omni_purchase']) {
+      overview.conversions = actionTotals['purchase'] || actionTotals['omni_purchase'] || 0;
+      overview.conversion_type = 'purchase';
+    } else if (actionTotals['lead']) {
+      overview.conversions = actionTotals['lead'];
+      overview.conversion_type = 'lead';
+    }
+
+    // Revenue for ecommerce
+    const valueTotals = {};
+    for (const av of agg.action_values) {
+      valueTotals[av.action_type] = (valueTotals[av.action_type] || 0) + parseFloat(av.value || 0);
+    }
+    if (overview.conversion_type === 'purchase') {
+      overview.revenue = valueTotals['purchase'] || valueTotals['omni_purchase'] || 0;
+      overview.roas = overview.revenue > 0 && agg.spend > 0 ? overview.revenue / agg.spend : 0;
+    }
+
+    if (overview.conversions > 0) {
+      overview.cost_per_conversion = agg.spend / overview.conversions;
+    }
+
+    console.log(`  ✅ Direct Meta overview: spend=$${overview.spend.toFixed(2)}, conversions=${overview.conversions}, type=${overview.conversion_type}`);
+    return overview;
+  } catch (e) {
+    console.warn(`  ⚠️ Direct Meta API overview failed: ${e.message}`);
+    return {};
+  }
+}
+
+async function getTopAds(accountId, since, until, limit = 5, campaignFilter = null) {
+  console.log(`  Fetching ad-level insights from account...${campaignFilter ? ` [campaign: ${campaignFilter}]` : ''}`);
+  // Get all ad-level insights in one call (much faster than per-ad)
+  const result = await pipboardCall('get_insights', {
+    object_id: accountId,
+    time_range: { since, until },
+    fields: 'ad_id,ad_name,spend,impressions,clicks,ctr,actions,cost_per_action_type,action_values,campaign_name',
+    level: 'ad'
+  });
+  const rows = parseInsightsJson(result);
+  console.log(`  Found ${rows.length} ad insight rows`);
+
+  const ads = [];
+  for (const row of rows) {
+    // Filter by campaign if specified
+    if (campaignFilter) {
+      const campaignName = row.campaign_name || '';
+      if (!campaignName.toLowerCase().includes(campaignFilter.toLowerCase())) {
+        continue;
+      }
+    }
+
+    const adId = row.ad_id || '';
+    const adName = row.ad_name || 'Unknown';
+    const spend = parseFloat(row.spend || 0);
+    if (spend === 0) continue;
+
+    // Detect conversion type: purchase (ecommerce) or lead (lead gen)
+    let conversions = 0;
+    let revenue = 0;
+    let conversionType = 'lead';
+
+    if (Array.isArray(row.actions)) {
+      for (const a of row.actions) {
+        const actionType = a.action_type;
+        const value = parseInt(a.value || 0);
+
+        // E-commerce: prioritize purchases
+        if (actionType === 'omni_purchase' || actionType === 'web_in_store_purchase') {
+          conversions += value;
+          conversionType = 'purchase';
+        }
+        // Lead gen: use leads
+        else if (actionType === 'lead' && conversionType !== 'purchase') {
+          conversions += value;
+        }
+      }
+    }
+
+    // Get revenue for ROAS calculation (ecommerce)
+    if (Array.isArray(row.action_values)) {
+      for (const av of row.action_values) {
+        if (av.action_type === 'omni_purchase' || av.action_type === 'web_in_store_purchase') {
+          revenue += parseFloat(av.value || 0);
+        }
+      }
+    }
+
+    // Calculate cost per conversion (CPL for leads, CPP for purchases)
+    let cpc = 0;
+    if (Array.isArray(row.cost_per_action_type)) {
+      for (const c of row.cost_per_action_type) {
+        if (conversionType === 'purchase' && (c.action_type === 'omni_purchase' || c.action_type === 'web_in_store_purchase')) {
+          cpc = parseFloat(c.value || 0);
+          break;
+        }
+        if (conversionType === 'lead' && c.action_type === 'lead') {
+          cpc = parseFloat(c.value || 0);
+          break;
+        }
+      }
+    }
+    if (conversions > 0 && cpc === 0) cpc = spend / conversions;
+
+    const roas = revenue > 0 ? revenue / spend : 0;
+
+    ads.push({
+      ad_id: adId,
+      ad_name: adName,
+      campaign_name: row.campaign_name || '',
+      spend,
+      impressions: parseInt(row.impressions || 0),
+      clicks: parseInt(row.clicks || 0),
+      ctr: parseFloat(row.ctr || 0),
+      conversions,
+      cpl: cpc, // Keep as cpl for compatibility, but it's actually CPP for ecommerce
+      roas,
+      revenue,
+      conversion_type: conversionType
+    });
+  }
+
+  // Sort by cost per conversion ascending (best first), only include ads with conversions
+  const withConversions = ads.filter(a => a.conversions > 0);
+  withConversions.sort((a, b) => a.cpl - b.cpl);
+  console.log(`  ${withConversions.length} ads with conversions${campaignFilter ? ` (filtered by campaign: ${campaignFilter})` : ''}, taking top ${limit}`);
+  return withConversions.slice(0, limit);
+}
+
+/**
+ * Fetch top ads directly from Meta Graph API (bypasses Pipeboard's 25-row limit).
+ * Used for all-time top performers where complete data is critical.
+ */
+async function getTopAdsDirect(accountId, since, until, limit = 5, campaignFilter = null) {
+  console.log(`  Fetching all-time top ads directly from Meta API (${since} to ${until})...`);
+  const fs = require('fs');
+  const { execSync } = require('child_process');
+
+  try {
+    const token = fs.readFileSync(process.env.HOME + '/.secrets/meta-ads-token.txt', 'utf-8').trim();
+    const timeRange = encodeURIComponent(JSON.stringify({ since, until }));
+    
+    // Fetch up to 200 ads with spend data, sorted by spend descending
+    const url = `https://graph.facebook.com/v22.0/${accountId}/insights?` +
+      `access_token=${token}&` +
+      `fields=ad_id,ad_name,spend,impressions,clicks,ctr,actions,cost_per_action_type,action_values,campaign_name&` +
+      `time_range=${timeRange}&` +
+      `level=ad&limit=200`;
+    
+    const rawResult = execSync(`curl -s --max-time 20 '${url}'`, { encoding: 'utf-8', timeout: 25000 });
+    const result = JSON.parse(rawResult);
+
+    if (result.error) {
+      console.warn(`  ⚠️ Meta API error: ${result.error.message}`);
+      return null; // Return null to signal fallback to Pipeboard
+    }
+
+    const rows = result.data || [];
+    console.log(`  Found ${rows.length} ad insight rows from Meta API`);
+
+    const ads = [];
+    for (const row of rows) {
+      if (campaignFilter) {
+        const campaignName = row.campaign_name || '';
+        if (!campaignName.toLowerCase().includes(campaignFilter.toLowerCase())) continue;
+      }
+
+      const spend = parseFloat(row.spend || 0);
+      if (spend === 0) continue;
+
+      let conversions = 0, revenue = 0, conversionType = 'lead';
+      if (Array.isArray(row.actions)) {
+        for (const a of row.actions) {
+          if (a.action_type === 'omni_purchase' || a.action_type === 'web_in_store_purchase') {
+            conversions += parseInt(a.value || 0);
+            conversionType = 'purchase';
+          } else if (a.action_type === 'lead' && conversionType !== 'purchase') {
+            conversions += parseInt(a.value || 0);
+          }
+        }
+      }
+      if (Array.isArray(row.action_values)) {
+        for (const av of row.action_values) {
+          if (av.action_type === 'omni_purchase' || av.action_type === 'web_in_store_purchase') {
+            revenue += parseFloat(av.value || 0);
+          }
+        }
+      }
+
+      const cpl = conversions > 0 ? spend / conversions : 0;
+
+      ads.push({
+        ad_id: row.ad_id || '',
+        ad_name: row.ad_name || 'Unknown',
+        campaign_name: row.campaign_name || '',
+        spend, impressions: parseInt(row.impressions || 0),
+        clicks: parseInt(row.clicks || 0), ctr: parseFloat(row.ctr || 0),
+        conversions, cpl, revenue, roas: revenue > 0 ? revenue / spend : 0,
+        conversion_type: conversionType
+      });
+    }
+
+    // Filter to ads with conversions, sort by cost per conversion ascending
+    const withConversions = ads.filter(a => a.conversions > 0);
+    withConversions.sort((a, b) => a.cpl - b.cpl);
+    console.log(`  ✅ ${withConversions.length} ads with conversions from Meta API, taking top ${limit}`);
+    return withConversions.slice(0, limit);
+  } catch (e) {
+    console.warn(`  ⚠️ Direct Meta API fetch failed: ${e.message}, falling back to Pipeboard`);
+    return null;
+  }
+}
+
+async function getAllAds(accountId, since, until, campaignFilter = null) {
+  console.log(`  Fetching ALL ad-level insights from account...${campaignFilter ? ` [campaign: ${campaignFilter}]` : ''}`);
+  // Get all ad-level insights in one call
+  const result = await pipboardCall('get_insights', {
+    object_id: accountId,
+    time_range: { since, until },
+    fields: 'ad_id,ad_name,spend,impressions,clicks,ctr,actions,cost_per_action_type,action_values,campaign_name',
+    level: 'ad'
+  });
+  const rows = parseInsightsJson(result);
+  console.log(`  Found ${rows.length} total ad insight rows`);
+
+  const ads = [];
+  for (const row of rows) {
+    // Filter by campaign if specified
+    if (campaignFilter) {
+      const campaignName = row.campaign_name || '';
+      if (!campaignName.toLowerCase().includes(campaignFilter.toLowerCase())) {
+        continue;
+      }
+    }
+
+    const adId = row.ad_id || '';
+    const adName = row.ad_name || 'Unknown';
+    const spend = parseFloat(row.spend || 0);
+    if (spend === 0) continue;
+
+    // Detect conversion type: purchase (ecommerce) or lead (lead gen)
+    let conversions = 0;
+    let revenue = 0;
+    let conversionType = 'lead';
+
+    if (Array.isArray(row.actions)) {
+      for (const a of row.actions) {
+        const actionType = a.action_type;
+        const value = parseInt(a.value || 0);
+
+        // E-commerce: prioritize purchases
+        if (actionType === 'omni_purchase' || actionType === 'web_in_store_purchase') {
+          conversions += value;
+          conversionType = 'purchase';
+        }
+        // Lead gen: use leads
+        else if (actionType === 'lead' && conversionType !== 'purchase') {
+          conversions += value;
+        }
+      }
+    }
+
+    // Get revenue for ROAS calculation (ecommerce)
+    if (Array.isArray(row.action_values)) {
+      for (const av of row.action_values) {
+        if (av.action_type === 'omni_purchase' || av.action_type === 'web_in_store_purchase') {
+          revenue += parseFloat(av.value || 0);
+        }
+      }
+    }
+
+    // Calculate cost per conversion (CPL for leads, CPP for purchases)
+    let cpc = 0;
+    if (Array.isArray(row.cost_per_action_type)) {
+      for (const c of row.cost_per_action_type) {
+        if (conversionType === 'purchase' && (c.action_type === 'omni_purchase' || c.action_type === 'web_in_store_purchase')) {
+          cpc = parseFloat(c.value || 0);
+          break;
+        }
+        if (conversionType === 'lead' && c.action_type === 'lead') {
+          cpc = parseFloat(c.value || 0);
+          break;
+        }
+      }
+    }
+    if (conversions > 0 && cpc === 0) cpc = spend / conversions;
+
+    const roas = revenue > 0 ? revenue / spend : 0;
+
+    ads.push({
+      ad_id: adId,
+      ad_name: adName,
+      campaign_name: row.campaign_name || '',
+      spend,
+      impressions: parseInt(row.impressions || 0),
+      clicks: parseInt(row.clicks || 0),
+      ctr: parseFloat(row.ctr || 0),
+      conversions,
+      cpl: cpc, // Keep as cpl for compatibility, but it's actually CPP for ecommerce
+      roas,
+      revenue,
+      conversion_type: conversionType
+    });
+  }
+
+  // Sort by spend descending (most recent/active first)
+  ads.sort((a, b) => b.spend - a.spend);
+  return ads;
+}
+
+async function getDemographicsDirect(accountId, since, until) {
+  console.log('  Fetching demographics via direct Meta Ads API...');
+  const fs = require('fs');
+  const { execSync } = require('child_process');
+
+  try {
+    // Read Meta Ads access token (separate from Pipeboard token)
+    const tokenFile = process.env.HOME + '/.secrets/meta-ads-token.txt';
+    const token = fs.readFileSync(tokenFile, 'utf-8').trim();
+
+    const timeRange = encodeURIComponent(JSON.stringify({ since, until }));
+    const url = `https://graph.facebook.com/v22.0/${accountId}/insights?` +
+      `access_token=${token}&` +
+      `fields=spend,impressions,clicks,ctr,actions,cost_per_action_type,action_values&` +
+      `breakdowns=age,gender&` +
+      `time_range=${timeRange}&` +
+      `level=account&limit=100`;
+
+    // Use curl to avoid Node.js IPv6 timeout issues
+    const rawResult = execSync(`curl -s --max-time 15 '${url}'`, { encoding: 'utf-8', timeout: 20000 });
+    const result = JSON.parse(rawResult);
+
+    if (result.error) {
+      throw new Error(result.error.message);
+    }
+
+    if (!result.data || !Array.isArray(result.data)) {
+      console.warn('  No data returned from direct API');
+      return [];
+    }
+
+    console.log(`  ✅ Direct API returned ${result.data.length} demographic rows`);
+
+    // Process the same way as Pipeboard data
+    return result.data.map(row => {
+      let conversions = 0;
+      let revenue = 0;
+      let conversionType = 'lead';
+
+      if (Array.isArray(row.actions)) {
+        for (const a of row.actions) {
+          const actionType = a.action_type;
+          const value = parseInt(a.value || 0);
+
+          if (actionType === 'omni_purchase' || actionType === 'web_in_store_purchase') {
+            conversions += value;
+            conversionType = 'purchase';
+          } else if (actionType === 'lead' && conversionType !== 'purchase') {
+            conversions += value;
+          }
+        }
+      }
+
+      if (Array.isArray(row.action_values)) {
+        for (const av of row.action_values) {
+          if (av.action_type === 'omni_purchase' || av.action_type === 'web_in_store_purchase') {
+            revenue += parseFloat(av.value || 0);
+          }
+        }
+      }
+
+      let cpl = 0;
+      const spend = parseFloat(row.spend || 0);
+      if (conversions > 0) cpl = spend / conversions;
+
+      return {
+        age: row.age || 'unknown',
+        gender: row.gender || 'unknown',
+        spend,
+        impressions: parseInt(row.impressions || 0),
+        clicks: parseInt(row.clicks || 0),
+        ctr: parseFloat(row.ctr || 0),
+        conversions,
+        cpl,
+        revenue,
+        roas: revenue > 0 ? revenue / spend : 0,
+        conversion_type: conversionType
+      };
+    }).filter(r => r.conversions > 0);
+  } catch (e) {
+    console.warn('  Direct API fetch failed:', e.message);
+    return [];
+  }
+}
+
+async function getDemographics(accountId, since, until) {
+  console.log('  Fetching demographic breakdown...');
+  try {
+    // Try breakdowns array format first
+    const result = await pipboardCall('get_insights', {
+      object_id: accountId,
+      time_range: { since, until },
+      fields: 'spend,impressions,clicks,ctr,actions,cost_per_action_type,action_values,age,gender',
+      level: 'account',
+      breakdowns: ['age', 'gender']
+    });
+    const rows = parseInsightsJson(result);
+
+    // Check if we got actual demographic breakdowns (rows should have age/gender fields)
+    const hasBreakdowns = rows.some(r => r.age || r.gender);
+
+    if (!hasBreakdowns) {
+      console.warn('  Pipeboard API did not return demographic breakdowns, trying direct Meta Ads API...');
+      return await getDemographicsDirect(accountId, since, until);
+    }
+
+    return rows.map(row => {
+      // Detect conversion type and count conversions
+      let conversions = 0;
+      let revenue = 0;
+      let conversionType = 'lead';
+
+      if (Array.isArray(row.actions)) {
+        for (const a of row.actions) {
+          const actionType = a.action_type;
+          const value = parseInt(a.value || 0);
+
+          // E-commerce: prioritize purchases
+          if (actionType === 'omni_purchase' || actionType === 'web_in_store_purchase') {
+            conversions += value;
+            conversionType = 'purchase';
+          }
+          // Lead gen: use leads
+          else if (actionType === 'lead' && conversionType !== 'purchase') {
+            conversions += value;
+          }
+        }
+      }
+
+      // Get revenue for ROAS (ecommerce)
+      if (Array.isArray(row.action_values)) {
+        for (const av of row.action_values) {
+          if (av.action_type === 'omni_purchase' || av.action_type === 'web_in_store_purchase') {
+            revenue += parseFloat(av.value || 0);
+          }
+        }
+      }
+
+      let cpl = 0;
+      const spend = parseFloat(row.spend || 0);
+      if (conversions > 0) cpl = spend / conversions;
+
+      return {
+        age: row.age || 'unknown',
+        gender: row.gender || 'unknown',
+        spend,
+        impressions: parseInt(row.impressions || 0),
+        clicks: parseInt(row.clicks || 0),
+        ctr: parseFloat(row.ctr || 0),
+        conversions,
+        cpl,
+        revenue,
+        roas: revenue > 0 ? revenue / spend : 0,
+        conversion_type: conversionType
+      };
+    }).filter(r => r.conversions > 0);
+  } catch (e) {
+    console.warn('  Warning: Demographics fetch failed:', e.message);
+    return [];
+  }
+}
+
+async function getDailyData(accountId, since, until, campaignFilter = null) {
+  console.log('  Fetching daily breakdown for chart...');
+
+  // Try Pipeboard first
+  let rows = [];
+  try {
+    const result = await pipboardCall('get_insights', {
+      object_id: accountId,
+      time_range: { since, until },
+      fields: 'spend,impressions,clicks,ctr,actions,cost_per_action_type,campaign_name',
+      level: campaignFilter ? 'campaign' : 'account',
+      time_breakdown: 'day'
+    });
+    rows = parseInsightsJson(result);
+    if (campaignFilter) {
+      rows = rows.filter(r => (r.campaign_name || '').toLowerCase().includes(campaignFilter.toLowerCase()));
+    }
+  } catch (e) {
+    console.warn('  Pipeboard daily data failed:', e.message);
+  }
+
+  // Fallback to direct Meta API if Pipeboard returned nothing
+  if (rows.length === 0) {
+    console.log('  ⚠️ Pipeboard returned no daily data, trying direct Meta API...');
+    try {
+      const fs = require('fs');
+      const { execSync } = require('child_process');
+      const token = fs.readFileSync(process.env.HOME + '/.secrets/meta-ads-token.txt', 'utf-8').trim();
+      const timeRange = encodeURIComponent(JSON.stringify({ since, until }));
+      const level = campaignFilter ? 'campaign' : 'account';
+      const url = `https://graph.facebook.com/v22.0/${accountId}/insights?` +
+        `access_token=${token}&` +
+        `fields=spend,impressions,clicks,ctr,actions,cost_per_action_type,campaign_name&` +
+        `time_range=${timeRange}&` +
+        `level=${level}&time_increment=1&limit=500`;
+      const raw = execSync(`curl -s --max-time 30 '${url}'`, { encoding: 'utf-8', timeout: 35000 });
+      const result = JSON.parse(raw);
+      if (result.error) {
+        console.warn(`  ⚠️ Meta API daily data error: ${result.error.message}`);
+      } else {
+        rows = result.data || [];
+        if (campaignFilter) {
+          rows = rows.filter(r => (r.campaign_name || '').toLowerCase().includes(campaignFilter.toLowerCase()));
+        }
+        console.log(`  ✅ Got ${rows.length} daily rows from direct Meta API`);
+      }
+    } catch (e) {
+      console.warn('  ⚠️ Direct Meta daily data also failed:', e.message);
+    }
+  }
+
+  return rows.map(row => {
+    let conversions = 0;
+    if (Array.isArray(row.actions)) {
+      for (const a of row.actions) {
+        if (a.action_type === 'omni_purchase' || a.action_type === 'web_in_store_purchase') {
+          conversions += parseInt(a.value || 0);
+        } else if (a.action_type === 'lead') {
+          conversions += parseInt(a.value || 0);
+        }
+      }
+    }
+    let cpl = 0;
+    const spend = parseFloat(row.spend || 0);
+    if (conversions > 0) cpl = spend / conversions;
+
+    return {
+      date: row.date_start || row.date || '',
+      spend,
+      impressions: parseInt(row.impressions || 0),
+      clicks: parseInt(row.clicks || 0),
+      ctr: parseFloat(row.ctr || 0),
+      conversions,
+      cpl
+    };
+  }).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ─── Chart Generation ──────────────────────────────────────────────────
+
+async function generateChart(dailyData) {
+  console.log('  Generating performance chart...');
+  
+  const width = 800;
+  const height = 400;
+  const chartJSNodeCanvas = new ChartJSNodeCanvas({ width, height, backgroundColour: 'white' });
+
+  const labels = dailyData.map(d => {
+    const date = new Date(d.date);
+    return date.toLocaleDateString('en-AU', { month: 'short', day: 'numeric' });
+  });
+
+  const configuration = {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Leads',
+          data: dailyData.map(d => d.conversions),
+          backgroundColor: 'rgba(16, 185, 129, 0.7)',
+          borderColor: 'rgba(16, 185, 129, 1)',
+          borderWidth: 1,
+          yAxisID: 'y',
+          order: 2
+        },
+        {
+          type: 'line',
+          label: 'CPL ($)',
+          data: dailyData.map(d => d.cpl > 0 ? d.cpl : null),
+          borderColor: '#1E293B',
+          backgroundColor: 'rgba(30, 41, 59, 0.1)',
+          borderWidth: 2,
+          pointRadius: 4,
+          pointBackgroundColor: '#1E293B',
+          yAxisID: 'y1',
+          tension: 0.3,
+          order: 1
+        },
+        {
+          type: 'line',
+          label: 'Spend ($)',
+          data: dailyData.map(d => d.spend),
+          borderColor: '#6366F1',
+          backgroundColor: 'rgba(99, 102, 241, 0.1)',
+          borderWidth: 2,
+          borderDash: [5, 5],
+          pointRadius: 3,
+          pointBackgroundColor: '#6366F1',
+          yAxisID: 'y1',
+          tension: 0.3,
+          order: 1
+        }
+      ]
+    },
+    options: {
+      responsive: false,
+      plugins: {
+        title: {
+          display: true,
+          text: 'Daily Performance Overview',
+          font: { size: 16, weight: 'bold' },
+          color: '#1E293B',
+          padding: { bottom: 20 }
+        },
+        legend: {
+          position: 'bottom',
+          labels: { font: { size: 12 }, color: '#475569', padding: 20 }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { size: 10 }, color: '#475569' }
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: { display: true, text: 'Leads', color: '#10B981', font: { size: 12, weight: 'bold' } },
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: { font: { size: 10 }, color: '#475569' },
+          beginAtZero: true
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          title: { display: true, text: 'Cost ($)', color: '#1E293B', font: { size: 12, weight: 'bold' } },
+          grid: { drawOnChartArea: false },
+          ticks: { font: { size: 10 }, color: '#475569' },
+          beginAtZero: true
+        }
+      }
+    }
+  };
+
+  const buffer = await chartJSNodeCanvas.renderToBuffer(configuration);
+  return buffer;
+}
+
+// ─── Thumbnail Fetching ────────────────────────────────────────────────
+
+const THUMBNAILS_DIR = path.join(__dirname, 'thumbnails');
+const PLACEHOLDER_PATH = path.join(THUMBNAILS_DIR, 'placeholder.png');
+
+function downloadFile(url, destPath) {
+  return new Promise((resolve, reject) => {
+    const proto = url.startsWith('https') ? https : require('http');
+    proto.get(url, { timeout: 15000 }, (res) => {
+      // Follow redirects
+      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+        return downloadFile(res.headers.location, destPath).then(resolve).catch(reject);
+      }
+      if (res.statusCode !== 200) {
+        res.resume();
+        return reject(new Error(`HTTP ${res.statusCode}`));
+      }
+      const ws = fs.createWriteStream(destPath);
+      res.pipe(ws);
+      ws.on('finish', () => { ws.close(); resolve(destPath); });
+      ws.on('error', reject);
+    }).on('error', reject);
+  });
+}
+
+async function generateAIInsights(overview, topAds, isEcommerce, clientName) {
+  try {
+    const fs = require('fs');
+    const https = require('https');
+
+    // Read OpenRouter API key (handle both raw key and OPENROUTER_KEY= format)
+    let apiKey = fs.readFileSync(process.env.HOME + '/.secrets/openrouter-key.txt', 'utf-8').trim();
+    if (apiKey.startsWith('OPENROUTER_KEY=')) {
+      apiKey = apiKey.split('=')[1].trim();
+    }
+
+    const conversionLabel = isEcommerce ? 'purchases' : 'leads';
+    const costLabel = isEcommerce ? 'CPP' : 'CPL';
+
+    // Prepare context for AI
+    const context = {
+      clientName,
+      campaignType: isEcommerce ? 'e-commerce' : 'lead generation',
+      period: 'last 7 days',
+      metrics: {
+        spend: `$${(overview.spend && overview.spend.toFixed(2)) || 0}`,
+        conversions: overview.conversions || 0,
+        costPerConversion: `$${(overview.cost_per_conversion || 0).toFixed(2)}`,
+        ctr: `${(overview.ctr || 0).toFixed(2)}%`,
+        impressions: overview.impressions || 0,
+        clicks: overview.clicks || 0
+      },
+      topPerformers: topAds.slice(0, 3).map(ad => ({
+        name: ad.ad_name,
+        conversions: ad.conversions,
+        cost: `$${ad.cpl.toFixed(2)}`,
+        ctr: `${ad.ctr.toFixed(2)}%`
+      }))
+    };
+
+    const prompt = `You are a Meta Ads expert generating insights for a client report. Use Australian English spelling (analyse, optimise, etc.).
+
+Client: ${context.clientName}
+Campaign Type: ${context.campaignType}
+Period: ${context.period}
+
+Metrics:
+- Spend: ${context.metrics.spend}
+- ${conversionLabel.charAt(0).toUpperCase() + conversionLabel.slice(1)}: ${context.metrics.conversions}
+- Cost per ${conversionLabel}: ${context.metrics.costPerConversion}
+- CTR: ${context.metrics.ctr}
+- Impressions: ${context.metrics.impressions}
+- Clicks: ${context.metrics.clicks}
+
+Top Performers:
+${context.topPerformers.map((ad, i) => `${i + 1}. ${ad.name}: ${ad.conversions} ${conversionLabel} at ${ad.cost} (${ad.ctr} CTR)`).join('\n')}
+
+Generate JSON with these sections (be specific and actionable):
+1. whatsWorking: 3-4 bullet points of what's performing well
+2. opportunities: 3-4 bullet points of opportunities to improve
+3. nextSteps: 3-4 bullet points of specific actions to take
+
+Return ONLY valid JSON in this exact format:
+{
+  "whatsWorking": ["point 1", "point 2", "point 3"],
+  "opportunities": ["point 1", "point 2", "point 3"],
+  "nextSteps": ["point 1", "point 2", "point 3"]
+}`;
+
+    const requestBody = JSON.stringify({
+      model: 'anthropic/claude-3.5-sonnet',
+      messages: [
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1000
+    });
+
+    const result = await new Promise((resolve, reject) => {
+      const req = https.request({
+        hostname: 'openrouter.ai',
+        path: '/api/v1/chat/completions',
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://feistyagency.com',
+          'X-Title': 'Client Reports Generator'
+        }
+      }, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            if (json.error) {
+              reject(new Error(json.error.message));
+            } else if (json.choices && json.choices[0]) {
+              const content = json.choices[0].message.content;
+              // Extract JSON from markdown code blocks if present
+              const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/) || content.match(/\{[\s\S]*\}/);
+              if (jsonMatch) {
+                resolve(JSON.parse(jsonMatch[1] || jsonMatch[0]));
+              } else {
+                resolve(JSON.parse(content));
+              }
+            } else {
+              reject(new Error('No response from API'));
+            }
+          } catch (e) {
+            reject(new Error(`Failed to parse API response: ${e.message}`));
+          }
+        });
+      });
+      req.on('error', reject);
+      req.write(requestBody);
+      req.end();
+    });
+
+    console.log('  ✅ AI-generated insights received');
+    return result;
+  } catch (e) {
+    console.warn(`  ⚠️  AI insights generation failed: ${e.message}`);
+    // Return fallback hardcoded insights
+    return {
+      whatsWorking: [`Campaign is running with ${overview.conversions || 0} conversions`],
+      opportunities: ['Continue optimising campaign performance'],
+      nextSteps: ['Monitor performance and adjust as needed']
+    };
+  }
+}
+
+async function fetchAdThumbnails(adIds) {
+  if (!fs.existsSync(THUMBNAILS_DIR)) fs.mkdirSync(THUMBNAILS_DIR, { recursive: true });
+
+  const thumbnailMap = {};
+  const BATCH_SIZE = 5;
+  const DELAY_MS = 500;
+
+  console.log(`  🖼️  Fetching thumbnails for ${adIds.length} ads...`);
+
+  for (let i = 0; i < adIds.length; i += BATCH_SIZE) {
+    const batch = adIds.slice(i, i + BATCH_SIZE);
+    const promises = batch.map(async (adId) => {
+      const localPath = path.join(THUMBNAILS_DIR, `${adId}.jpg`);
+
+      // Use cached thumbnail if it exists and is recent (< 24h old)
+      if (fs.existsSync(localPath)) {
+        const stat = fs.statSync(localPath);
+        const ageHours = (Date.now() - stat.mtimeMs) / (1000 * 60 * 60);
+        if (ageHours < 24 && stat.size > 100) {
+          thumbnailMap[adId] = localPath;
+          return;
+        }
+      }
+
+      try {
+        const result = await pipboardCall('get_ad_creatives', {
+          ad_id: adId,
+          fields: 'thumbnail_url'
+        });
+        const text = extractContentText(result);
+        const parsed = JSON.parse(text);
+        const creatives = parsed.data || (Array.isArray(parsed) ? parsed : []);
+
+        if (creatives.length > 0 && creatives[0].thumbnail_url) {
+          await downloadFile(creatives[0].thumbnail_url, localPath);
+          thumbnailMap[adId] = localPath;
+        } else {
+          thumbnailMap[adId] = PLACEHOLDER_PATH;
+        }
+      } catch (e) {
+        console.warn(`    ⚠️ Thumbnail failed for ad ${adId}: ${e.message}`);
+        if (e.message.includes('404') || e.message.includes('not found')) {
+          console.warn(`      → Ad creatives API returned 404 - ad may not have creative assets`);
+        } else if (e.message.includes('timeout')) {
+          console.warn(`      → Request timeout - using placeholder`);
+        }
+        thumbnailMap[adId] = PLACEHOLDER_PATH;
+      }
+    });
+
+    await Promise.all(promises);
+
+    // Delay between batches to avoid rate limits
+    if (i + BATCH_SIZE < adIds.length) {
+      await new Promise(r => setTimeout(r, DELAY_MS));
+    }
+  }
+
+  const fetched = Object.values(thumbnailMap).filter(p => p !== PLACEHOLDER_PATH).length;
+  console.log(`  ✅ Thumbnails: ${fetched} fetched, ${Object.keys(thumbnailMap).length - fetched} placeholders`);
+  return thumbnailMap;
+}
+
+// ─── Report Data Assembly ──────────────────────────────────────────────
+
+function formatCurrency(val) {
+  return '$' + val.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
+function formatPct(val) {
+  return val.toFixed(2) + '%';
+}
+
+function guessReleaseLot(adName) {
+  // Try to extract date-based release lot from ad name
+  // Order matters: most specific patterns first
+
+  // Full date patterns (DD-MM-YYYY or YYYY-MM-DD)
+  const fullDatePatterns = [
+    /(\d{4}[-_]\d{2}[-_]\d{2})/,           // e.g., "2026-01-29"
+    /(\d{1,2}[-_]\d{1,2}[-_]\d{4})/,       // e.g., "23-11-2025", "22-12-2025"
+  ];
+  for (const p of fullDatePatterns) {
+    const m = adName.match(p);
+    if (m) {
+      // Convert DD-MM-YYYY to readable month format
+      const parts = m[1].split(/[-_]/);
+      if (parts.length === 3) {
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+        if (parts[0].length === 4) {
+          // YYYY-MM-DD
+          const monthIdx = parseInt(parts[1]) - 1;
+          if (monthIdx >= 0 && monthIdx < 12) return `${months[monthIdx]}-${parts[2]}`;
+        } else if (parts[2].length === 4) {
+          // DD-MM-YYYY
+          const monthIdx = parseInt(parts[1]) - 1;
+          if (monthIdx >= 0 && monthIdx < 12) return `${months[monthIdx]}-${parts[0]}`;
+        }
+      }
+      return m[1];
+    }
+  }
+
+  // Month name patterns (e.g., "Jan-29", "Dec-15", "29-Jan")
+  const monthNamePatterns = [
+    /(\w{3}[-_]\d{1,2})(?!\d)/i,  // e.g., "Jan-29", "Dec-15" (not followed by more digits)
+    /(\d{1,2}[-_](?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec))/i,  // e.g., "29-Jan"
+  ];
+  for (const p of monthNamePatterns) {
+    const m = adName.match(p);
+    if (m) return m[1];
+  }
+
+  return 'General';
+}
+
+function generateExecutiveSummary(overview, topAds, clientName, isEcommerce = false) {
+  const conversions = overview.conversions || 0;
+  const costPerConversion = overview.cost_per_conversion || 0;
+  const spend = overview.spend || 0;
+  const ctr = overview.ctr || 0;
+  const bestCost = topAds.length > 0 ? topAds[0].cpl : 0;
+  const bestAdName = topAds.length > 0 ? topAds[0].ad_name : '';
+
+  const conversionLabel = isEcommerce ? 'purchases' : 'leads';
+  const costLabel = isEcommerce ? 'CPP' : 'CPL';
+  const campaignType = isEcommerce ? 'e-commerce' : 'lead gen';
+
+  let summary = `The ${clientName} campaign is delivering `;
+  if (costPerConversion < 10) {
+    summary += `strong performance with a blended ${costLabel} of ${formatCurrency(costPerConversion)} across ${conversions} ${conversionLabel}. `;
+  } else if (costPerConversion < 20) {
+    summary += `solid results with a blended ${costLabel} of ${formatCurrency(costPerConversion)} across ${conversions} ${conversionLabel}. `;
+  } else {
+    summary += `results with a blended ${costLabel} of ${formatCurrency(costPerConversion)} across ${conversions} ${conversionLabel}. `;
+  }
+
+  summary += `Total ad spend for the period was ${formatCurrency(spend)} with an average CTR of ${formatPct(ctr)}. `;
+
+  if (topAds.length > 0) {
+    summary += `The top performer achieved a ${costLabel} of ${formatCurrency(bestCost)}`;
+    if (bestAdName) summary += ` (${bestAdName.substring(0, 40)})`;
+    summary += '. ';
+  }
+
+  if (ctr > 5) {
+    summary += 'High CTR indicates strong creative-audience fit. ';
+  } else if (ctr > 2) {
+    summary += `CTR is within healthy range for ${campaignType} campaigns. `;
+  }
+
+  return summary.trim();
+}
+
+function buildDemographicInsights(demoData) {
+  if (!demoData.length) {
+    return [{ title: 'Data pending', description: 'Demographic breakdown requires more data volume' }];
+  }
+
+  // Sort by conversions descending
+  const sorted = [...demoData].sort((a, b) => b.conversions - a.conversions);
+
+  // Group by gender
+  const genderGroups = {};
+  for (const d of sorted) {
+    const gender = d.gender === 'female' ? 'Female' : d.gender === 'male' ? 'Male' : 'Unknown';
+    const key = `${gender} ${d.age}`;
+    if (!genderGroups[key]) genderGroups[key] = { ...d, label: key };
+    else {
+      genderGroups[key].conversions += d.conversions;
+      genderGroups[key].spend += d.spend;
+    }
+  }
+
+  const top = Object.values(genderGroups)
+    .sort((a, b) => b.conversions - a.conversions)
+    .slice(0, 3);
+
+  // Determine if e-commerce or lead gen from first item
+  const isEcommerce = sorted[0] && sorted[0].conversion_type === 'purchase';
+  const conversionLabel = isEcommerce ? 'purchases' : 'leads';
+  const costLabel = isEcommerce ? 'CPP' : 'CPL';
+
+  return top.map(d => ({
+    title: d.label,
+    description: `${d.conversions} ${conversionLabel}, ${formatCurrency(d.cpl)} ${costLabel}, ${formatPct(d.ctr)} CTR`
+  }));
+}
+
+function buildTopAdsData(topAds, thumbnailMap = {}, adCreatedTimes = {}) {
+  const rankIcons = ['🔥', '2', '⭐', '4', '5'];
+  return topAds.map((ad, i) => {
+    // Use created_time from Meta API if available, otherwise fall back to name parsing
+    let releaseLot = guessReleaseLot(ad.ad_name);
+    const createdTime = adCreatedTimes[ad.ad_id];
+    if (createdTime) {
+      const d = new Date(createdTime);
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      releaseLot = `${months[d.getMonth()]}-${d.getDate()}`;
+    }
+    // When no conversions yet (new batch), show spend in CPL/CPP column and "—" for count
+    const hasConversions = ad.conversions > 0;
+    return {
+      rank_icon: rankIcons[i] || String(i + 1),
+      release_lot: releaseLot,
+      cpl: hasConversions ? formatCurrency(ad.cpl) : (ad.spend > 0 ? `${formatCurrency(ad.spend)} spent` : '—'),
+      leads: hasConversions ? String(ad.conversions) : (ad.spend > 0 ? 'Pending' : '—'),
+      ctr: formatPct(ad.ctr),
+      ad_id: '...' + ad.ad_id.slice(-9),
+      thumbnail: thumbnailMap[ad.ad_id] || PLACEHOLDER_PATH
+    };
+  });
+}
+
+/**
+ * Build latest batch table data when NO conversions exist yet.
+ * Shows spend, CPM, and CTR instead of CPP/Purchases.
+ * Reuses the same template field names (cpl → spend, leads → CPM) so the
+ * docx template loop {#latest_batch_ads} works without changes.
+ */
+function buildLatestBatchMetrics(topAds, thumbnailMap = {}, adCreatedTimes = {}) {
+  const rankIcons = ['🔥', '2', '⭐', '4', '5'];
+  return topAds.map((ad, i) => {
+    let releaseLot = guessReleaseLot(ad.ad_name);
+    const createdTime = adCreatedTimes[ad.ad_id];
+    if (createdTime) {
+      const d = new Date(createdTime);
+      const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      releaseLot = `${months[d.getMonth()]}-${d.getDate()}`;
+    }
+    const cpm = ad.impressions > 0 ? (ad.spend / ad.impressions) * 1000 : 0;
+    return {
+      rank_icon: rankIcons[i] || String(i + 1),
+      release_lot: releaseLot,
+      cpl: formatCurrency(ad.spend),         // "Spend" column
+      leads: cpm > 0 ? formatCurrency(cpm) : '—',  // "CPM" column
+      ctr: formatPct(ad.ctr),
+      ad_id: '...' + ad.ad_id.slice(-9),
+      thumbnail: thumbnailMap[ad.ad_id] || PLACEHOLDER_PATH
+    };
+  });
+}
+
+// ─── Latest Batch Detection ────────────────────────────────────────────
+
+/**
+ * Fetch created_time for all ads in an account from the Meta Graph API.
+ * Uses curl subprocess to avoid Node.js IPv6 timeout issues.
+ * Returns a map of ad_id → created_time (ISO string).
+ */
+async function fetchAdCreatedTimes(accountId) {
+  const fs = require('fs');
+  const { execSync } = require('child_process');
+
+  try {
+    const tokenFile = process.env.HOME + '/.secrets/meta-ads-token.txt';
+    const token = fs.readFileSync(tokenFile, 'utf-8').trim();
+
+    const adDates = {};
+    let url = `https://graph.facebook.com/v22.0/${accountId}/ads?` +
+      `access_token=${token}&fields=id,name,created_time&limit=200`;
+
+    while (url) {
+      const rawResult = execSync(`curl -s --max-time 15 '${url}'`, { encoding: 'utf-8', timeout: 20000 });
+      const result = JSON.parse(rawResult);
+
+      if (result.error) {
+        console.warn(`  ⚠️ Meta API error fetching ad dates: ${result.error.message}`);
+        return adDates;
+      }
+
+      for (const ad of (result.data || [])) {
+        adDates[ad.id] = ad.created_time;
+      }
+
+      url = result.paging && result.paging.next ? result.paging.next : null;
+    }
+
+    console.log(`  ✅ Fetched created_time for ${Object.keys(adDates).length} ads`);
+    return adDates;
+  } catch (e) {
+    console.warn(`  ⚠️ Failed to fetch ad created times: ${e.message}`);
+    return {};
+  }
+}
+
+/**
+ * Fetch insights for specific ad IDs directly from Meta Graph API.
+ * Used when Pipeboard's limited response doesn't include recent batch ads.
+ */
+async function fetchAdInsightsDirect(adIds, since, until) {
+  const fs = require('fs');
+  const { execSync } = require('child_process');
+
+  try {
+    const token = fs.readFileSync(process.env.HOME + '/.secrets/meta-ads-token.txt', 'utf-8').trim();
+    const timeRange = JSON.stringify({ since, until });
+    const ads = [];
+
+    // Batch in groups of 50 using the Meta batch API or sequential calls
+    for (let i = 0; i < adIds.length; i += 50) {
+      const batch = adIds.slice(i, i + 50);
+      const idsFilter = JSON.stringify([{ field: 'ad.id', operator: 'IN', value: batch }]);
+      const accountId = 'act_' + batch[0]; // We need the account ID, passed separately
+      // Use ad-level insights with filtering
+      for (const adId of batch) {
+        try {
+          const url = `https://graph.facebook.com/v22.0/${adId}/insights?access_token=${token}&fields=spend,impressions,clicks,ctr,actions,cost_per_action_type,action_values&time_range=${encodeURIComponent(timeRange)}`;
+          const raw = execSync(`curl -s --max-time 10 '${url}'`, { encoding: 'utf-8', timeout: 15000 });
+          const result = JSON.parse(raw);
+          if (result.data && result.data[0]) {
+            const row = result.data[0];
+            const spend = parseFloat(row.spend || 0);
+            if (spend === 0) continue;
+
+            let conversions = 0, revenue = 0, conversionType = 'lead';
+            if (Array.isArray(row.actions)) {
+              for (const a of row.actions) {
+                if (a.action_type === 'omni_purchase' || a.action_type === 'web_in_store_purchase') {
+                  conversions += parseInt(a.value || 0);
+                  conversionType = 'purchase';
+                } else if (a.action_type === 'lead' && conversionType !== 'purchase') {
+                  conversions += parseInt(a.value || 0);
+                }
+              }
+            }
+            if (Array.isArray(row.action_values)) {
+              for (const av of row.action_values) {
+                if (av.action_type === 'omni_purchase' || av.action_type === 'web_in_store_purchase') {
+                  revenue += parseFloat(av.value || 0);
+                }
+              }
+            }
+
+            const cpl = conversions > 0 ? spend / conversions : 0;
+            ads.push({
+              ad_id: adId,
+              ad_name: '', // Will be filled from adCreatedTimes context
+              spend, impressions: parseInt(row.impressions || 0),
+              clicks: parseInt(row.clicks || 0), ctr: parseFloat(row.ctr || 0),
+              conversions, cpl, revenue, roas: revenue > 0 ? revenue / spend : 0,
+              conversion_type: conversionType
+            });
+          }
+        } catch (e) {
+          // Skip individual ad errors
+        }
+      }
+    }
+    return ads;
+  } catch (e) {
+    console.warn(`  ⚠️ Direct ad insights fetch failed: ${e.message}`);
+    return [];
+  }
+}
+
+async function detectLatestBatch(allAds, limit, adCreatedTimes, accountId, since, until) {
+  // If we have created_time data from Meta API, use it for accurate batch detection
+  if (Object.keys(adCreatedTimes).length > 0) {
+    // Group ALL ads (from Meta API) by upload date
+    const adsByDate = {};
+    for (const [adId, createdTime] of Object.entries(adCreatedTimes)) {
+      const dateKey = createdTime.split('T')[0];
+      if (!adsByDate[dateKey]) adsByDate[dateKey] = [];
+      adsByDate[dateKey].push(adId);
+    }
+
+    // Sort dates descending to find the most recent batch
+    const sortedDates = Object.entries(adsByDate)
+      .sort((a, b) => b[0].localeCompare(a[0]));
+
+    const [batchDate, batchAdIds] = sortedDates[0];
+    console.log(`  📦 Latest batch by created_time: ${batchDate} with ${batchAdIds.length} ads`);
+
+    // Check if we have insights data for these ads from Pipeboard
+    const pipboardSet = new Set(allAds.map(a => a.ad_id));
+    const batchAdsFromPipeboard = allAds.filter(a => batchAdIds.includes(a.ad_id));
+    const missingIds = batchAdIds.filter(id => !pipboardSet.has(id));
+
+    console.log(`  📦 ${batchAdsFromPipeboard.length} in Pipeboard data, ${missingIds.length} need direct fetch`);
+
+    // Fetch missing insights directly from Meta API
+    let directAds = [];
+    if (missingIds.length > 0 && accountId) {
+      console.log(`  📦 Fetching insights for ${missingIds.length} batch ads from Meta API...`);
+      directAds = await fetchAdInsightsDirect(missingIds, since, until);
+      // Fill in ad names from created_times context (we don't have names from this API)
+      // We'll use the ad_id to look up names later
+      console.log(`  📦 Got insights for ${directAds.length} additional ads`);
+    }
+
+    // Merge Pipeboard + direct data
+    const allBatchAds = [...batchAdsFromPipeboard, ...directAds];
+
+    // Try to get ad names for direct-fetched ads
+    if (directAds.length > 0) {
+      try {
+        const fs = require('fs');
+        const { execSync } = require('child_process');
+        const token = fs.readFileSync(process.env.HOME + '/.secrets/meta-ads-token.txt', 'utf-8').trim();
+        const nameIds = directAds.map(a => a.ad_id).join(',');
+        const raw = execSync(`curl -s --max-time 10 'https://graph.facebook.com/v22.0/?ids=${nameIds}&access_token=${token}&fields=name'`, { encoding: 'utf-8', timeout: 15000 });
+        const names = JSON.parse(raw);
+        for (const ad of directAds) {
+          if (names[ad.ad_id]) ad.ad_name = names[ad.ad_id].name || '';
+        }
+      } catch (e) {
+        console.warn(`  ⚠️ Could not fetch ad names: ${e.message}`);
+      }
+    }
+
+    const withConversions = allBatchAds.filter(a => a.conversions > 0);
+    console.log(`  📦 ${withConversions.length} of ${allBatchAds.length} batch ads have conversions`);
+
+    if (withConversions.length > 0) {
+      return withConversions.sort((a, b) => a.cpl - b.cpl).slice(0, limit);
+    }
+    // No conversions yet, show top spenders
+    const withSpend = allBatchAds.filter(a => a.spend > 0);
+    if (withSpend.length > 0) {
+      console.log(`  📦 No conversions in latest batch, showing top ${limit} spenders`);
+      return withSpend.sort((a, b) => b.spend - a.spend).slice(0, limit);
+    }
+  }
+
+  // Fallback: regex-based detection from ad names (Pipeboard data only)
+  console.log('  📦 Falling back to ad name parsing for batch detection');
+  const MONTH_MAP = {
+    'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+    'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+  };
+
+  const adsByBatch = {};
+  for (const ad of allAds) {
+    let batchKey = null;
+    let batchDate = null;
+    const dmy = ad.ad_name.match(/(\d{1,2})[-_](\d{1,2})[-_](\d{4})/);
+    if (dmy) {
+      const day = parseInt(dmy[1]), month = parseInt(dmy[2]) - 1, year = parseInt(dmy[3]);
+      batchDate = new Date(year, month, day);
+      batchKey = `${batchDate.toISOString().split('T')[0]}`;
+    } else {
+      const mdd = ad.ad_name.match(/([A-Za-z]{3})[-_](\d{1,2})/);
+      if (mdd) {
+        const monthStr = mdd[1].toLowerCase();
+        const day = parseInt(mdd[2]);
+        if (MONTH_MAP[monthStr] !== undefined) {
+          const year = MONTH_MAP[monthStr] >= 10 ? 2025 : 2026;
+          batchDate = new Date(year, MONTH_MAP[monthStr], day);
+          batchKey = `${mdd[1]}-${mdd[2]}`;
+        }
+      }
+    }
+
+    if (batchKey && batchDate) {
+      if (!adsByBatch[batchKey]) adsByBatch[batchKey] = { date: batchDate, ads: [] };
+      adsByBatch[batchKey].ads.push(ad);
+    }
+  }
+
+  const sortedBatches = Object.entries(adsByBatch)
+    .sort((a, b) => b[1].date - a[1].date);
+
+  if (sortedBatches.length > 0) {
+    const [batchName, batchData] = sortedBatches[0];
+    console.log(`  📦 Detected latest batch by name: "${batchName}" with ${batchData.ads.length} ads`);
+    const withConversions = batchData.ads.filter(a => a.conversions > 0);
+    if (withConversions.length > 0) {
+      return withConversions.sort((a, b) => a.cpl - b.cpl).slice(0, limit);
+    }
+    return batchData.ads.sort((a, b) => b.spend - a.spend).slice(0, limit);
+  }
+
+  console.log('  📦 No batch pattern found, using top ads by recency');
+  return allAds.slice(0, limit);
+}
+
+// ─── DOCX Generation ──────────────────────────────────────────────────
+
+async function generateReport(clientConfig, since, until) {
+  console.log(`\n🔄 Generating report for ${clientConfig.name}`);
+  console.log(`   Period: ${since} to ${until}`);
+  console.log(`   Account: ${clientConfig.account_id}\n`);
+
+  // ── Compute date ranges for 3 metric sections
+  const weekSince = since;
+  const weekUntil = until;
+
+  // Month: 30 days back from until
+  const untilDate = new Date(until);
+  const monthStart = new Date(untilDate);
+  monthStart.setDate(monthStart.getDate() - 29);
+  const monthSince = monthStart.toISOString().split('T')[0];
+  const monthUntil = until;
+
+  // All-time: use client's start date from database
+  const clientStartDate = getClientStartDate(clientConfig.name);
+  console.log(`  📅 Client start date: ${clientStartDate}`);
+  const alltimeSince = clientStartDate;
+  const alltimeUntil = until;
+
+  // ── Fetch all data
+  console.log('📊 Fetching data from Pipeboard...');
+
+  // Use campaign filter from config to isolate this client's data
+  const campaignFilter = clientConfig.campaign_filter || clientConfig.campaign_name;
+
+  // Helper: try Pipeboard first, fall back to direct Meta API if empty/failed
+  async function fetchOverview(label, accountId, since, until, filter) {
+    console.log(`\n  📅 ${label} period: ${since} to ${until}`);
+    let ov = await getAccountOverview(accountId, since, until, filter);
+    if (!ov.spend && ov.spend !== 0 || (ov.spend === 0 && ov.conversions === 0 && ov.impressions === 0)) {
+      console.log(`  ⚠️ Pipeboard returned empty for ${label}, trying direct Meta API...`);
+      ov = await getAccountOverviewDirect(accountId, since, until, filter);
+    }
+    console.log(`  ✅ ${label} overview:`, JSON.stringify({
+      spend: ov.spend, leads: ov.conversions, cpl: ov.cost_per_conversion, ctr: ov.ctr, type: ov.conversion_type
+    }));
+    return ov;
+  }
+
+  const overview = await fetchOverview('Week', clientConfig.account_id, weekSince, weekUntil, campaignFilter);
+  const monthOverview = await fetchOverview('Month', clientConfig.account_id, monthSince, monthUntil, campaignFilter);
+  const alltimeOverview = await fetchOverview('All-time', clientConfig.account_id, alltimeSince, alltimeUntil, campaignFilter);
+
+  // Try Meta API directly first (accurate, no row limit), fall back to Pipeboard
+  let topAds = await getTopAdsDirect(clientConfig.account_id, alltimeSince, alltimeUntil, 5, campaignFilter);
+  if (!topAds) {
+    console.log('  Falling back to Pipeboard for top ads...');
+    topAds = await getTopAds(clientConfig.account_id, alltimeSince, alltimeUntil, 5, campaignFilter);
+  }
+  console.log(`  ✅ Top ${topAds.length} ads fetched (all-time period: ${alltimeSince} to ${alltimeUntil})`);
+
+  const demographics = await getDemographics(clientConfig.account_id, since, until);
+  console.log(`  ✅ ${demographics.length} demographic rows`);
+
+  // ── Fetch ALL ads for latest batch detection (not just those with conversions)
+  console.log('\n  🔍 Detecting latest batch for top performers...');
+  const allAdsForBatch = await getAllAds(clientConfig.account_id, alltimeSince, alltimeUntil, campaignFilter);
+  console.log(`  Found ${allAdsForBatch.length} total ads for batch detection`);
+
+  // Fetch actual created_time from Meta API for accurate batch detection
+  console.log('  📅 Fetching ad upload dates from Meta API...');
+  const adCreatedTimes = await fetchAdCreatedTimes(clientConfig.account_id);
+
+  const latestBatchAds = await detectLatestBatch(allAdsForBatch, 5, adCreatedTimes, clientConfig.account_id, alltimeSince, alltimeUntil);
+  console.log(`  ✅ Latest batch: ${latestBatchAds.length} ads`);
+
+  // ── Generate 3-panel stacked chart (weekly data)
+  let chartBuffer = null;
+  let weeklyData = [];
+  try {
+    weeklyData = await fetchWeeklyData(clientConfig.account_id, since, until);
+    console.log(`  ✅ ${weeklyData.length} weeks of data for chart`);
+    if (weeklyData.length > 0) {
+      chartBuffer = await generateStackedChart(weeklyData, clientConfig.name, since, until);
+      console.log(`  ✅ 3-panel chart generated (${chartBuffer.length} bytes)`);
+      // Also save chart as standalone PNG
+      const chartPath = path.join(REPORTS_DIR, `${clientConfig.name.replace(/[^a-zA-Z0-9]/g, '')}_chart_${new Date().toISOString().split('T')[0]}.png`);
+      fs.writeFileSync(chartPath, chartBuffer);
+      console.log(`  ✅ Chart saved: ${chartPath}`);
+    }
+  } catch (e) {
+    console.warn('  ⚠️ Chart generation failed, continuing without:', e.message);
+  }
+
+  // ── Fetch thumbnails for all unique ads
+  const allUniqueAdIds = [...new Set([
+    ...topAds.map(a => a.ad_id),
+    ...latestBatchAds.map(a => a.ad_id)
+  ])].filter(Boolean);
+  const thumbnailMap = await fetchAdThumbnails(allUniqueAdIds);
+
+  // ── Build template data
+  const period = formatDateRange(since, until);
+  const topAdsData = buildTopAdsData(topAds, thumbnailMap, adCreatedTimes);
+  const demoInsights = buildDemographicInsights(demographics);
+
+  // Build release lot performance from top ads
+  const lotGroups = {};
+  for (const ad of topAds) {
+    const lot = guessReleaseLot(ad.ad_name);
+    if (!lotGroups[lot]) lotGroups[lot] = { conversions: 0, spend: 0, count: 0, bestCost: Infinity };
+    lotGroups[lot].conversions += ad.conversions;
+    lotGroups[lot].spend += ad.spend;
+    lotGroups[lot].count += 1;
+    lotGroups[lot].bestCost = Math.min(lotGroups[lot].bestCost, ad.cpl);
+  }
+
+  const releaseLots = Object.entries(lotGroups).map(([lot, data]) => ({
+    title: `${lot} Release`,
+    description: `${data.conversions} conversions from ${data.count} ad(s) – Best cost: ${formatCurrency(data.bestCost)}`
+  }));
+
+  // Creative insights from top 2 ads
+  const creativeInsights = topAds.slice(0, 2).map((ad, i) => ({
+    title: i === 0 ? 'Top Performer:' : 'Runner Up:',
+    description: `${ad.ad_name} – ${ad.conversions} conversions at ${formatCurrency(ad.cpl)} cost, ${formatPct(ad.ctr)} CTR`
+  }));
+
+  const tableFootnote = topAds.length > 0
+    ? `🔥 = Top performer | ⭐ = Volume star | Sorted by cost per conversion (lowest first)`
+    : 'Data from the reporting period';
+
+  // ── Build latest batch data — switch columns based on whether any ads have conversions
+  // ── Determine if e-commerce (purchase conversions) or lead gen
+  const isEcommerce = overview.conversion_type === 'purchase';
+  console.log(`  ${isEcommerce ? '🛒 E-commerce mode (purchases/ROAS)' : '📋 Lead gen mode (leads/CPL)'}`);
+
+  // ── Build latest batch data — switch columns based on whether any ads have conversions
+  const latestBatchHasConversions = latestBatchAds.some(a => a.conversions > 0);
+  let latestBatchData, latestBatchHeading, latestBatchCol3, latestBatchCol4;
+
+  if (latestBatchHasConversions) {
+    // Normal mode: show cost per conversion and conversion count
+    latestBatchData = buildTopAdsData(latestBatchAds, thumbnailMap, adCreatedTimes);
+    latestBatchHeading = 'Latest Batch — Top Performers';
+    latestBatchCol3 = isEcommerce ? 'CPP' : 'CPL';
+    latestBatchCol4 = isEcommerce ? 'Purchases' : 'Leads';
+  } else {
+    // No conversions yet: show Spend, CPM, CTR as "Top Metrics"
+    latestBatchHeading = 'Latest Batch — Top Metrics';
+    latestBatchCol3 = 'Spend';
+    latestBatchCol4 = 'CPM';
+    latestBatchData = buildLatestBatchMetrics(latestBatchAds, thumbnailMap, adCreatedTimes);
+  }
+  // Generate AI-powered insights
+  console.log('  🤖 Generating AI-powered insights...');
+  const aiInsights = await generateAIInsights(overview, topAds, isEcommerce, clientConfig.name);
+
+  const whatsWorking = aiInsights.whatsWorking.map(text => ({ text }));
+  const opportunities = aiInsights.opportunities.map(text => ({ text }));
+  const nextSteps = aiInsights.nextSteps.map(text => ({ text }));
+
+  // Generate executive summary with correct conversion type
+  const execSummary = generateExecutiveSummary(overview, topAds, clientConfig.name, isEcommerce);
+
+  // ── Template data object
+  const data = {
+    client_name: clientConfig.name,
+    campaign_name: clientConfig.campaign_name || 'All Campaigns',
+    period,
+    executive_summary: execSummary,
+
+    // Week metrics
+    week_spend: formatCurrency(overview.spend || 0),
+    week_leads: String(overview.conversions || 0),
+    week_cpl: formatCurrency(overview.cost_per_conversion || 0),
+    week_ctr: formatPct(overview.ctr || 0),
+
+    // Month metrics
+    month_spend: formatCurrency(monthOverview.spend || 0),
+    month_leads: String(monthOverview.conversions || 0),
+    month_cpl: formatCurrency(monthOverview.cost_per_conversion || 0),
+    month_ctr: formatPct(monthOverview.ctr || 0),
+
+    // All-time metrics (since campaign start)
+    alltime_spend: formatCurrency(alltimeOverview.spend || 0),
+    alltime_leads: String(alltimeOverview.conversions || 0),
+    alltime_cpl: formatCurrency(alltimeOverview.cost_per_conversion || 0),
+    alltime_ctr: formatPct(alltimeOverview.ctr || 0),
+
+    // E-commerce metrics (ROAS & Revenue)
+    week_roas: overview.roas > 0 ? overview.roas.toFixed(2) + 'x' : 'N/A',
+    month_roas: monthOverview.roas > 0 ? monthOverview.roas.toFixed(2) + 'x' : 'N/A',
+    alltime_roas: alltimeOverview.roas > 0 ? alltimeOverview.roas.toFixed(2) + 'x' : 'N/A',
+    week_revenue: formatCurrency(overview.revenue || 0),
+    month_revenue: formatCurrency(monthOverview.revenue || 0),
+    alltime_revenue: formatCurrency(alltimeOverview.revenue || 0),
+
+    // Ad tables
+    latest_batch_heading: latestBatchHeading,
+    latest_batch_col3: latestBatchCol3,
+    latest_batch_col4: latestBatchCol4,
+    latest_batch_ads: latestBatchData,
+    top_ads: topAdsData,
+    table_footnote: tableFootnote,
+
+    release_lots: releaseLots.length > 0 ? releaseLots : [{ title: 'All', description: 'Performance data aggregated across all release lots' }],
+    creative_insights: creativeInsights.length > 0 ? creativeInsights : [{ title: 'Analysis pending', description: 'More data needed for creative insights' }],
+    demographics: demoInsights,
+    whats_working: whatsWorking,
+    opportunities,
+    next_steps: nextSteps
+  };
+
+  // ── Fill template
+  console.log('\n📝 Filling template...');
+  const templatePath = isEcommerce ? TEMPLATE_ECOM_PATH : TEMPLATE_PATH;
+  console.log(`  Using ${isEcommerce ? 'e-commerce' : 'lead gen'} template: ${path.basename(templatePath)}`);
+  const templateContent = fs.readFileSync(templatePath);
+  const zip = new PizZip(templateContent);
+
+  // Image module for chart + thumbnails
+  const imageOpts = {
+    centered: false,
+    getImage: (tagValue) => {
+      if (tagValue === 'chart' && chartBuffer) return chartBuffer;
+      // Thumbnail file paths (absolute paths to local files)
+      if (tagValue && typeof tagValue === 'string' && fs.existsSync(tagValue)) {
+        return fs.readFileSync(tagValue);
+      }
+      // Fallback: 1px transparent PNG
+      return Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
+    },
+    getSize: (img, tagValue) => {
+      if (tagValue === 'chart') return [580, 530];  // 3-panel stacked chart, scaled to fit page width
+      // Thumbnails: small 50x50 preview
+      if (tagValue && typeof tagValue === 'string' && (tagValue.includes('thumbnails/') || tagValue.includes('thumbnails\\'))) {
+        return [50, 50];
+      }
+      return [1, 1];
+    }
+  };
+
+  const doc = new Docxtemplater(zip, {
+    modules: [new ImageModule(imageOpts)],
+    paragraphLoop: true,
+    linebreaks: true,
+    delimiters: { start: '{', end: '}' }
+  });
+
+  // Set data
+  doc.setData({ ...data, chart_image: 'chart' });
+  doc.render();
+
+  // ── Save
+  if (!fs.existsSync(REPORTS_DIR)) fs.mkdirSync(REPORTS_DIR, { recursive: true });
+
+  const clientSlug = clientConfig.name.replace(/[^a-zA-Z0-9]/g, '');
+  const today = new Date().toISOString().split('T')[0];
+  const outputFilename = `${clientSlug}_${today}.docx`;
+  const outputPath = path.join(REPORTS_DIR, outputFilename);
+
+  const output = doc.getZip().generate({ type: 'nodebuffer', compression: 'DEFLATE' });
+  fs.writeFileSync(outputPath, output);
+
+  console.log(`\n✅ Report generated: ${outputPath}`);
+  console.log(`   Size: ${(output.length / 1024).toFixed(1)} KB`);
+  return outputPath;
+}
+
+// ─── Helpers ───────────────────────────────────────────────────────────
+
+function formatDateRange(since, until) {
+  const s = new Date(since);
+  const u = new Date(until);
+  const opts = { day: 'numeric', month: 'long', year: 'numeric' };
+  return `${s.toLocaleDateString('en-AU', opts)} – ${u.toLocaleDateString('en-AU', opts)}`;
+}
+
+function computeDateRange(preset = 'last_7d') {
+  const today = new Date();
+  let end = new Date(today);
+  end.setDate(end.getDate() - 1);
+  let start = new Date(end);
+
+  switch (preset) {
+    case 'last_7d': start.setDate(start.getDate() - 6); break;
+    case 'last_14d': start.setDate(start.getDate() - 13); break;
+    case 'last_30d': start.setDate(start.getDate() - 29); break;
+    default: start.setDate(start.getDate() - 6);
+  }
+
+  return {
+    since: start.toISOString().split('T')[0],
+    until: end.toISOString().split('T')[0]
+  };
+}
+
+// ─── CLI ───────────────────────────────────────────────────────────────
+
+async function main() {
+  const args = process.argv.slice(2);
+  const config = loadConfig();
+
+  // Parse args
+  let clientName = null;
+  let since = null;
+  let until = null;
+  let preset = 'last_7d';
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--client') {
+      clientName = args[++i];
+    } else if (args[i] === '--since') {
+      since = args[++i];
+    } else if (args[i] === '--until') {
+      until = args[++i];
+    } else if (args[i] === '--preset') {
+      preset = args[++i];
+    } else if (!args[i].startsWith('--') && clientName === null) {
+      // Positional argument: client name
+      clientName = args[i];
+    }
+  }
+
+  // Default to first client if not specified
+  if (!clientName) {
+    clientName = config.clients[0].name;
+  }
+
+  // Find client config
+  const clientConfig = config.clients.find(c => 
+    c.name.toLowerCase().includes(clientName.toLowerCase())
+  );
+  if (!clientConfig) {
+    console.error(`Client "${clientName}" not found in config. Available: ${config.clients.map(c => c.name).join(', ')}`);
+    process.exit(1);
+  }
+
+  // Date range
+  if (!since || !until) {
+    const range = computeDateRange(preset);
+    since = since || range.since;
+    until = until || range.until;
+  }
+
+  try {
+    const outputPath = await generateReport(clientConfig, since, until);
+    // Print path for programmatic use
+    console.log(`\nOUTPUT_PATH=${outputPath}`);
+
+    // Auto-register in report viewer: convert DOCX → HTML via mammoth + register in state.db
+    try {
+      const mammoth = require('mammoth');
+      const { execSync } = require('child_process');
+      
+      const result = await mammoth.convertToHtml({path: outputPath}, {
+        convertImage: mammoth.images.imgElement(function(image) {
+          return image.read('base64').then(function(buf) {
+            return { src: 'data:' + image.contentType + ';base64,' + buf };
+          });
+        })
+      });
+      
+      const html = `<!DOCTYPE html><html><head><style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 0 20px; color: #333; line-height: 1.6; }
+        h1 { color: #1a1a2e; border-bottom: 3px solid #e94560; padding-bottom: 10px; }
+        h2 { color: #1a1a2e; margin-top: 30px; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 10px 14px; text-align: left; }
+        th { background: #1a1a2e; color: white; font-weight: 600; }
+        tr:nth-child(even) { background: #f8f9fa; }
+        img { max-width: 100%; height: auto; margin: 20px 0; border-radius: 8px; }
+        ul { padding-left: 20px; } li { margin-bottom: 6px; } p { margin: 10px 0; }
+      </style></head><body>${result.value}</body></html>`;
+      
+      const stagingDir = '/tmp/client-reports-staging';
+      fs.mkdirSync(stagingDir, { recursive: true });
+      const htmlFilename = path.basename(outputPath, '.docx') + '.html';
+      const htmlPath = path.join(stagingDir, htmlFilename);
+      fs.writeFileSync(htmlPath, html);
+      
+      // Register in SQLite
+      const DB_PATH = path.join(__dirname, 'state.db');
+
+      // Look up client ID from database
+      let clientId = 1; // fallback
+      try {
+        const clientLookup = execSync(
+          `sqlite3 "${DB_PATH}" "SELECT id FROM clients WHERE name LIKE '%${clientConfig.name.replace(/'/g, "''")}%'"`,
+          { encoding: 'utf-8' }
+        ).trim();
+        if (clientLookup) {
+          const match = clientLookup.match(/^\s*(\d+)/);
+          if (match) {
+            clientId = parseInt(match[1]);
+          }
+        }
+      } catch (err) {
+        console.warn(`  Warning: Could not look up client ID: ${err.message}`);
+      }
+
+      const escapedPath = htmlPath.replace(/'/g, "''");
+      const escapedDocx = outputPath.replace(/'/g, "''");
+      execSync(`sqlite3 "${DB_PATH}" "INSERT INTO reports (client_id, start_date, end_date, status, html_path, docx_path, completed_at) VALUES (${clientId}, '${since}', '${until}', 'ready', '${escapedPath}', '${escapedDocx}', datetime('now'));"`, { encoding: 'utf-8' });
+      
+      console.log(`✅ Registered in report viewer: ${htmlPath}`);
+    } catch (viewerErr) {
+      console.warn(`⚠️ Report viewer registration failed (non-fatal): ${viewerErr.message}`);
+    }
+  } catch (err) {
+    console.error('❌ Report generation failed:', err.message);
+    if (err.stack) console.error(err.stack);
+    process.exit(1);
+  }
+}
+
+main();

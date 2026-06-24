@@ -1,18 +1,57 @@
-# Client Email Scan Report - 2026-03-18 20:05
+# Client Email Scan Report - 2026-03-04 07:14
 
 📧 **Gmail Scan for will@feistyagency.com since February 18, 2026**
 
 ## 🥗 Box Divvy (Michele)
 **Status:** End-card tagline change pending ("Run your own food hub and earn extra income" + link to application page)
 
-**Found 2 Box Divvy emails:**
+**Found 5 Box Divvy emails:**
 
-- **Tue, 17 Mar 2026 09:03:03 +1100** | From: Darren Varney <victoria.manager@boxdivvy.com.au>
-  Subject: Fwd: Why I became a Hubster
-  Preview: Hey Will,
+- **Tue, 3 Mar 2026 13:16:39 +1100** | From: Richard Czeiger <richard@boxdivvy.com.au>
+  Subject: Do we still need STAPE?
+  Preview: Hi William,
 
-I'm not sure if you've seen the list below.  I thought it might be useful
-when you're producing ads for BD.
+Can you please give me a call to chat about STAPE and what we're using it
+for and if we indeed still need it?
+
+Cheers,
+Richard
+
+Richard Czeiger
+
+Director, Co-Founder
+
+[image: ...
+
+- **Tue, 3 Mar 2026 11:59:16 +1100** | From: William Varney <will@feistyagency.com>
+  Subject: Re: Latest Performance Report
+  Preview: Hey Anton
+
+to confirm , the report shows the leads who have just completed the first
+step of the form (contact information) however we are recording form
+completion and hubster approval in the bac...
+
+- **Tue, 3 Mar 2026 11:56:29 +1100** | From: William Varney <will@feistyagency.com>
+  Subject: Re: Members Box Divvy
+  Preview: Amazing Jayne
+
+Appreciate you calling this out and adding the new content
+
+More the better at this stage, please continue adding everything you have
+and I can cut it up to suit
+
+Cheers
+
+Willi...
+
+- **Tue, 3 Mar 2026 10:59:36 +1100** | From: Darren Varney <victoria.manager@boxdivvy.com.au>
+  Subject: Applicant not appearing in Pipedrive
+  Preview: Hi Will,
+
+This application didn't appear in Pipedrive.  I had another one yesterday
+that didn't work.  Please fix.
+
+
 
 Cheers
 Darren Varney
@@ -23,124 +62,116 @@ The Box Divvy Team
 
 ...
 
-- **Tue, 17 Mar 2026 08:50:27 +1100** | From: Darren Varney <victoria.manager@boxdivvy.com.au>
-  Subject: This one is strange
-  Preview: Hey Will,
+- **Mon, 02 Mar 2026 14:28:52 -0800** | From: Google Search Console Team <sc-noreply@google.com>
+  Subject: Your February Search performance for boxdivvy.com.au
+  Preview: Your February performance
+on Google Search
 
-We received 5 applications overnight.  They all moved into Pipedrive
-without problems, except for this one.  No Person, Lead or Deal was created
-in Pipedrive.
 
-Any thoughts on what co...
+boxdivvy.com.au
+
+
+75
+
+Clicks (web)
+
+
+3.31K
+
+Impressions (web)
+
+
+1
+
+Pages with
+first impressions
+(estimated)
+
+
+Your content achievem...
 
 ## 💉 NeedleFree (Hadar)
 **Status:** Script rewrite outstanding since February 2
 
-**Found 2 NeedleFree emails:**
-
-- **Tue, 17 Mar 2026 17:07:48 +1100** | From: William Varney <will@feistyagency.com>
-  Subject: Re: Your ad was rejected
-  Preview: Thanks Hadar
-
-Already actioned ,
-
-
-cheers
-
-William
-
-On Tue, 17 Mar 2026 at 2:52 pm, Hadar Barsheshet <hadar@asts.com.au> wrote:
-
-> Hi William
-> Please see the email I received
->
->
-> Had...
-
-- **Tue, 17 Mar 2026 14:52:10 +1100** | From: Hadar Barsheshet <hadar@asts.com.au>
-  Subject: Fwd: Your ad was rejected
-  Preview: ...
+✅ **No new emails from NeedleFree/Hadar since Feb 18**
 
 ## 📝 Other Revision Requests
 
-**Found 26 potential revision emails:**
+**Found 33 potential revision emails:**
 
-- **Wed, 18 Mar 2026 06:25:38 +0000** | From: "Vast.ai Console" <console@mg.vast.ai>
-  Subject: Vast.ai balance getting low
-  Preview: Hey will@feistyagency.com,
-
-You are receiving this notification because your balance just crossed your configured balance threshold, -0.01. Please a...
-
-- **Tue, 17 Mar 2026 21:35:29 -0700** | From: Google Ads <ads-noreply@google.com>
-  Subject: The new Nano Banana Pro is now in Google Ads 🍌
-  Preview: Google  
-Ads<https://c.gle/AEJ26qugDBQF9RQiWpSkxCIustJvmyWHUNJuSaHaSGWKs3qJJKrk35nANStxgszOhZ8zvAzAYhrYroVGfkmR3Q9erAWYJgW2T5ynMynw3fi1ElEEuTb_pMZj1G...
-
-- **Wed, 18 Mar 2026 02:01:45 +0000** | From: Virlo <noreply@notifications.virlo.ai>
-  Subject: Your "UGC AI Video generation" niche is ready
+- **Tue, 03 Mar 2026 09:03:54 -0800** | From: Google Ads <ads-account-noreply@google.com>
+  Subject: Thanks for redeeming your promotional code
   Preview: 
-Your custom niche "UGC AI Video generation" is ready
-Come back and check what's driving engagement
+Your Customer ID: 862-038-2195
 
-UGC AI Video generation
-80 new videos added...
+Sign In  
+<https://c.gle/AEJ26qtRTFC77ZrTtR9l5IwZjZs5RXIyU6Ai_SXn_YpkvLGTR2yMM3612PKsDH3tQ9Wz623DbjEE5SXdjuwIkGnR...
 
-- **Wed, 18 Mar 2026 00:39:04 +0000** | From: "OpenRouter, Inc" <receipts@openrouter.ai>
-  Subject: Your OpenRouter, Inc receipt [#1587-3100]
-  Preview: Receipt from OpenRouter, Inc Receipt #1587-3100
-Amount paid
-$105.50
+- **Tue, 03 Mar 2026 17:00:30 +0000 (UTC)** | From: Greg Philippe <greg@mail.leadzup.com>
+  Subject: I Have To End This
+  Preview: Today is the last day you can join Pre-Sellers before we close doors at 5pm
 
-Date paid
-Mar 18, 2026, 12:37:43 AM
+This is the community where we'll work together so you can Add an extra...
 
-Payment method
-- 1000
+- **Tue, 03 Mar 2026 15:31:13 +0000** | From: Jordan Morgan <jordan@superwall.com>
+  Subject: The Superwall MCP, Technical Office Hours, and More.
+  Preview: Hey there,
 
-Summary
+Jordan from Superwall here 👋
 
-...
+A lighter newsletter this week, but we've still got some solid updates to cover. Android just got a big ...
 
-- **Tue, 17 Mar 2026 22:58:54 +0000** | From: Fathom <no-reply@fathom.video>
-  Subject: Recap of your meeting with Pipeboard
-  Preview: <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
-<html xmlns="http://www.w3....
+- **Tue, 03 Mar 2026 15:11:17 +0000 (UTC)** | From: Zephyr <zephyr@mail.beehiiv.com>
+  Subject: 9 months of using this
+  Preview: Hey,
 
-- **Tue, 17 Mar 2026 21:06:30 +0000** | From: Social Growth Engineers <socialgrowthengineer@mail.beehiiv.com>
-  Subject: The Trend Radar: 457M views
-  Preview: View image: (https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/808b0f5e-39c1-4900-9cf2...
+9 months ago I built Business Brain OS.
 
-- **Tue, 17 Mar 2026 20:18:47 +0000** | From: Retell AI <hi@retellai.com>
-  Subject: Big Launch Month 🚀 ChatGPT app, Dynamic voice speed, A/B testing, and more
-  Preview: Your agents can now match caller pace, run live A/B tests, and launch from ChatGPT.
- 
+Let me show you what 9 months of daily use looks like.
 
-[https://email.notif.retellai.com/c/eJxsk8-SojoYxZ8GdlohIIFF...
+**Month 1-2:** Setup phase. Organized my ...
 
-- **Tue, 17 Mar 2026 20:09:33 +0000** | From: SideShift <sideshift-updates@mail.beehiiv.com>
-  Subject: SideShift Weekly Product Updates (NEW)
-  Preview: Hey -
+- **Tue, 3 Mar 2026 13:45:17 +0000** | From: "Lenny's Newsletter" <lenny@substack.com>
+  Subject: How to debug a team that isn’t working: the Waterline Model
+  Preview: View this post on the web at https://www.lennysnewsletter.com/p/how-to-debug-a-team-that-isnt-working
 
-We’ve been shipping _a lot_ behind the scenes over the past few weeks and wanted to share some updates across the board.
+👋  Hey there, I’m Lenny. Each week, I answer ...
 
-This is a quick break...
+- **Tue, 3 Mar 2026 13:19:26 +0000** | From: Frank Sondors <salesforge@mail.beehiiv.com>
+  Subject: The reply window is where deals get won
+  Preview: View image: (https://media.beehiiv.com/cdn-cgi/image/fit=scale-down,format=auto,onerror=redirect,quality=80/uploads/asset/file/7910295c-1339-4419-a2ee...
 
-- **Tue, 17 Mar 2026 19:07:25 +0000 (UTC)** | From: Calendly Developer Portal <updates@send.calendly.com>
-  Subject: The Calendly MCP server is now available
-  Preview: Build AI-powered scheduling into your apps          Calendly 
-( https://ablink.send.calendly.com/ls/click?upn=u001.-2FpFZHOmNsCfytAyhc9roxLT2ZdMZte3i...
+- **Tue, 03 Mar 2026 12:16:19 +0000 (UTC)** | From: Matthew Berman <bigplayers@mail.beehiiv.com>
+  Subject: this Openclaw agent does my SEO
+  Preview: I've been paying for Semrush for 15 years. Dashboards, reports, keyword tracking, CSV exports. Every client, every month. **And I’m sick of it.**
 
-- **Tue, 17 Mar 2026 16:30:59 +0000 (UTC)** | From: Greg Philippe <greg@mail.leadzup.com>
-  Subject: A recurring nightmare I used to have
-  Preview: Let me tell you about a recurring nightmare I used to have in my agency.
+V...
 
-It was 2023, and agency owners would come to me to help them get meetings ...
+- **Tue, 03 Mar 2026 11:52:20 +0000** | From: Fed at GummySearch <hello@mg.gummysearch.com>
+  Subject: So, what's next after GummySearch?
+  Preview: <p>Hey folks! Many of you have been asking what's next after GummySearch, or even requesting ideas for "GummySearch for _____".</p>
+
+<p>So I'm build...
+
+- **Tue, 3 Mar 2026 11:09:19 +0000** | From: The Random Recruiter <randomrecruiter@substack.com>
+  Subject: "I Applied to 200 Jobs and Got 3 Callbacks. What Am I Doing Wrong?"
+  Preview: View this post on the web at https://randomrecruiter.substack.com/p/i-applied-to-200-jobs-and-got-3-callbacks
+
+In This Issue:
+Why 200 applications ...
+
+- **Tue, 03 Mar 2026 07:56:55 +0000** | From: BLUETTI-AU <noreply@bluettipower.com>
+  Subject: 👑A Better Membership Starts Here
+  Preview: [Membership Upgrade](https://www.bluettipower.com.au/pages/bluetti-bucks)
+[What's New](https://www.bluettipower.com.au/pages/bluetti-bucks)
+
+[You B...
 
 ## Summary
-- **Box Divvy emails:** 2
-- **NeedleFree emails:** 2
-- **Other revision requests:** 26
-- **Scan completed:** 2026-03-18 20:05:36
+- **Box Divvy emails:** 5
+- **NeedleFree emails:** 0
+- **Other revision requests:** 33
+- **Scan completed:** 2026-03-04 07:14:07
 
 ---
 *Generated by Gmail API scanner*

@@ -7,20 +7,73 @@
       "drive_folder": "10i9oSE7WYXcMdxAn4CPDmQdfJvyi7Nqp",
       "report_day": "monday",
       "active": true,
-      "campaign_filter": null
+      "campaign_filter": "Hubster Lead Gen",
+      "email_query_terms": [
+        "\"Box Divvy\"",
+        "boxdivvy",
+        "boxdivvy.com.au"
+      ]
     },
     {
       "name": "NeedleFree (Comfort-In)",
-      "account_id": "act_160907410994298",
-      "campaign_name": "PA - Sales - LP - All - CBO - 17.1",
+      "account_id": "act_1492399752377856",
+      "account_ids": [
+        "act_1492399752377856",
+        "act_160907410994298"
+      ],
+      "report_currency": "AUD",
+      "account_currency": {
+        "act_1492399752377856": "USD",
+        "act_160907410994298": "AUD"
+      },
+      "currency_rates_to_report": {
+        "AUD": 1,
+        "USD": 1.425642
+      },
+      "campaign_name": "All NeedleFree funnel campaigns",
       "drive_folder": "10tk5XWaqQpTX4hBXRom0OTPfd5O0Khh6",
       "report_day": "monday",
       "active": true,
-      "campaign_filter": null
+      "campaign_filter": null,
+      "email_query_terms": [
+        "\"NeedleFree\"",
+        "\"Comfort-In\"",
+        "injectneedlefree",
+        "asts.com.au",
+        "hadar"
+      ],
+      "backend_sales": {
+        "type": "woocommerce",
+        "site_url": "https://injectneedlefree.com",
+        "consumer_key_secret": "needlefree-woo-consumer-key",
+        "consumer_secret_secret": "needlefree-woo-consumer-secret",
+        "product_ids": [
+          1141,
+          1142
+        ],
+        "product_labels": {
+          "1141": "IM Kit",
+          "1142": "SubQ Kit"
+        },
+        "paid_statuses": [
+          "processing",
+          "completed"
+        ]
+      },
+      "analytics": {
+        "type": "ga4",
+        "property_id": "376212605",
+        "service_account_secret": "google-sa"
+      },
+      "currency_rates_updated_at": "2026-06-22T08:45:43.660Z",
+      "currency_rate_source": "open.er-api.com"
     }
   ],
   "pipeboard_token_file": "~/.secrets/pipeboard-api-key.txt",
   "pipeboard_endpoint": "https://mcp.pipeboard.co/meta-ads-mcp",
+  "meta_token_file": "~/.secrets/meta-ads-token.txt",
+  "meta_token_secret": "meta-ads-token",
+  "meta_api_version": "v22.0",
   "google_creds": "~/.secrets/google-service-account.json",
   "google_subject": "will@feistyagency.com",
   "staging_dir": "/tmp/client-reports-staging",
@@ -31,6 +84,6 @@
     "impressions": 0.05,
     "clicks": 0.05,
     "conversions": 0.05,
-    "reach": 0.10
+    "reach": 0.1
   }
 }

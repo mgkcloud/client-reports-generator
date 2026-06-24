@@ -19,10 +19,19 @@ const path = require('path');
 const https = require('https');
 const { createCanvas, loadImage } = require('canvas');
 const { ChartJSNodeCanvas } = require('chartjs-node-canvas');
+const { normalizeAccountIds, normalizeCurrencyRows } = require('./account_merge_helpers');
 
 // ─── Config ────────────────────────────────────────────────────────────
 
 const CONFIG_PATH = path.join(__dirname, 'config.json');
+
+// Local date string (avoids DST boundary bug with toISOString)
+function getLocalDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
 
 function loadConfig() {
   return JSON.parse(fs.readFileSync(CONFIG_PATH, 'utf8'));
@@ -46,6 +55,10 @@ const COLORS = {
   leadsBarMain: 'rgba(72,209,176,0.75)',  // Leads bars (teal/green)
   leadsBarBorder: 'rgba(72,209,176,1)',
   leadsBarHighlight: 'rgba(16,185,129,0.9)',
+  completedBarMain: 'rgba(59,130,246,0.78)',
+  completedBarBorder: 'rgba(37,99,235,1)',
+  dropoffBarMain: 'rgba(248,113,113,0.70)',
+  dropoffBarBorder: 'rgba(220,38,38,0.9)',
   leadsTrendLine: 'rgba(147,197,253,0.6)',  // Light blue trend line behind bars
   darkText: '#1E293B',
   grayText: '#64748B',
@@ -57,6 +70,56 @@ const COLORS = {
   annotationBgBest: 'rgba(16,185,129,0.9)',  // Green badge for best
   lastWeekHatch: 'rgba(200,200,200,0.4)', // Hatched pattern for partial week
 };
+
+function mergeWeeklyData(rows) {
+  const byWeek = new Map();
+  for (const row of rows.filter(Boolean)) {
+    const key = row.weekStart;
+    if (!key) continue;
+    if (!byWeek.has(key)) {
+      byWeek.set(key, { spend: 0, impressions: 0, clicks: 0, leads: 0, completedRegistrations: 0, purchases: 0, revenue: 0, days: 0, weekStart: key });
+    }
+    const current = byWeek.get(key);
+    current.spend += Number(row.spend || 0);
+    current.impressions += Number(row.impressions || 0);
+    current.clicks += Number(row.clicks || 0);
+    current.leads += Number(row.leads || 0);
+    current.completedRegistrations += Number(row.completedRegistrations || 0);
+    current.purchases += Number(row.purchases || 0);
+    current.revenue += Number(row.revenue || 0);
+    current.days = Math.max(current.days, Number(row.days || 0));
+  }
+
+  const sorted = [...byWeek.values()].sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+  const conversionType = sorted.some(w => w.purchases > 0) ? 'purchase' : 'lead';
+  return sorted.map((w, i) => {
+    const conversions = conversionType === 'purchase' ? w.purchases : w.leads;
+    const dropoff = Math.max((w.leads || 0) - (w.completedRegistrations || 0), 0);
+    const cpl = conversions > 0 ? w.spend / conversions : 0;
+    const ctr = w.impressions > 0 ? w.clicks / w.impressions * 100 : 0;
+    const roas = w.revenue > 0 && w.spend > 0 ? w.revenue / w.spend : 0;
+    const startDate = new Date(w.weekStart);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + Math.min(w.days || 7, 7) - 1);
+    const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    return {
+      ...w,
+      conversions,
+      completedRegistrations: w.completedRegistrations || 0,
+      dropoff,
+      completionRate: w.leads > 0 ? (w.completedRegistrations || 0) / w.leads * 100 : 0,
+      dropoffRate: w.leads > 0 ? dropoff / w.leads * 100 : 0,
+      cpl,
+      ctr,
+      roas,
+      isPartial: (w.days || 0) < 7,
+      weekNum: i + 1,
+      label: `Week ${i + 1}`,
+      sublabel: `${monthNames[startDate.getMonth()]} ${startDate.getDate()}-${endDate.getDate()}`,
+      conversionType
+    };
+  });
+}
 
 // ─── Pipeboard API ─────────────────────────────────────────────────────
 
@@ -92,12 +155,20 @@ function pipboardCall(toolName, args) {
 
 // ─── Data Fetching ─────────────────────────────────────────────────────
 
-async function fetchWeeklyData(accountId, since, until, includePreviousWeeks = 8) {
+async function fetchWeeklyData(accountId, since, until, includePreviousWeeks = 8, campaignFilter = null) {
+  const accountIds = normalizeAccountIds(accountId);
+  if (accountIds.length > 1) {
+    console.log(`Fetching weekly chart data across ${accountIds.length} accounts...`);
+    const data = await Promise.all(accountIds.map(async id => normalizeCurrencyRows(await fetchWeeklyData(id, since, until, includePreviousWeeks, campaignFilter), id, accountId)));
+    return mergeWeeklyData(data.flat());
+  }
+
+  const singleAccountId = accountIds[0];
   // Extend date range backwards to include previous weeks for comparison
   const sinceDate = new Date(since);
   const weeksBack = includePreviousWeeks * 7;
   sinceDate.setDate(sinceDate.getDate() - weeksBack);
-  const extendedSince = sinceDate.getFullYear() + '-' + String(sinceDate.getMonth() + 1).padStart(2, '0') + '-' + String(sinceDate.getDate()).padStart(2, '0');
+  const extendedSince = getLocalDate(sinceDate);
 
   console.log(`Fetching daily data (${extendedSince} to ${until}) for weekly aggregation (${includePreviousWeeks} weeks previous + current period)...`);
 
@@ -106,10 +177,10 @@ async function fetchWeeklyData(accountId, since, until, includePreviousWeeks = 8
   // Try Pipeboard first
   try {
     const result = await pipboardCall('get_insights', {
-      object_id: accountId,
+      object_id: singleAccountId,
       time_range: { since: extendedSince, until },
-      fields: 'spend,impressions,clicks,ctr,actions,action_values',
-      level: 'account',
+      fields: 'spend,impressions,clicks,ctr,actions,action_values,campaign_name',
+      level: campaignFilter ? 'campaign' : 'account',
       time_breakdown: 'day'
     });
 
@@ -138,11 +209,11 @@ async function fetchWeeklyData(accountId, since, until, includePreviousWeeks = 8
       const timeRange = encodeURIComponent(JSON.stringify({ since: extendedSince, until }));
 
       let allRows = [];
-      let url = `https://graph.facebook.com/v22.0/${accountId}/insights?` +
+      let url = `https://graph.facebook.com/v22.0/${singleAccountId}/insights?` +
         `access_token=${token}&` +
-        `fields=spend,impressions,clicks,ctr,actions,action_values&` +
+        `fields=spend,impressions,clicks,ctr,actions,action_values,campaign_name&` +
         `time_range=${timeRange}&` +
-        `level=account&time_increment=1&limit=500`;
+        `level=${campaignFilter ? 'campaign' : 'account'}&time_increment=1&limit=500`;
 
       while (url) {
         const raw = execSync(`curl -s --max-time 30 '${url}'`, { encoding: 'utf-8', timeout: 35000 });
@@ -169,6 +240,10 @@ async function fetchWeeklyData(accountId, since, until, includePreviousWeeks = 8
 
   for (const seg of segments) {
     const m = seg.metrics || seg;
+    if (campaignFilter) {
+      const campaignName = m.campaign_name || seg.campaign_name || '';
+      if (!campaignName.toLowerCase().includes(campaignFilter.toLowerCase())) continue;
+    }
     const dateStr = m.date_start || m.date || '';
     if (!dateStr) continue;
 
@@ -177,11 +252,10 @@ async function fetchWeeklyData(accountId, since, until, includePreviousWeeks = 8
     const diff = date.getDate() - day + (day === 0 ? -6 : 1);
     const monday = new Date(date);
     monday.setDate(diff);
-    // Use local date (not UTC) to avoid DST boundary bugs where toISOString() shifts the day
-    const weekKey = monday.getFullYear() + '-' + String(monday.getMonth() + 1).padStart(2, '0') + '-' + String(monday.getDate()).padStart(2, '0');
+    const weekKey = getLocalDate(monday);
 
     if (!weeks[weekKey]) {
-      weeks[weekKey] = { spend: 0, impressions: 0, clicks: 0, leads: 0, purchases: 0, revenue: 0, days: 0, weekStart: weekKey };
+      weeks[weekKey] = { spend: 0, impressions: 0, clicks: 0, leads: 0, completedRegistrations: 0, purchases: 0, revenue: 0, days: 0, weekStart: weekKey };
     }
 
     weeks[weekKey].spend += parseFloat(m.spend || 0);
@@ -189,22 +263,25 @@ async function fetchWeeklyData(accountId, since, until, includePreviousWeeks = 8
     weeks[weekKey].clicks += parseInt(m.clicks || 0);
     weeks[weekKey].days += 1;
 
-    // Track both leads and purchases to determine campaign type
+    // Track canonical actions. Meta often returns multiple aliases for the same event;
+    // use one canonical count per segment instead of summing aliases.
     if (Array.isArray(m.actions)) {
+      const actionTotals = {};
       for (const a of m.actions) {
-        if (a.action_type === 'lead') {
-          weeks[weekKey].leads += parseInt(a.value || 0);
-        }
-        if (a.action_type === 'omni_purchase' || a.action_type === 'web_in_store_purchase') {
-          weeks[weekKey].purchases += parseInt(a.value || 0);
-        }
+        actionTotals[a.action_type] = (actionTotals[a.action_type] || 0) + parseInt(a.value || 0);
       }
+      weeks[weekKey].leads += actionTotals.lead || 0;
+      weeks[weekKey].completedRegistrations += actionTotals.complete_registration
+        || actionTotals['offsite_conversion.fb_pixel_complete_registration']
+        || actionTotals.omni_complete_registration
+        || 0;
+      weeks[weekKey].purchases += actionTotals.purchase || 0;
     }
 
     // Get revenue for ROAS
     if (Array.isArray(m.action_values)) {
       for (const av of m.action_values) {
-        if (av.action_type === 'omni_purchase' || av.action_type === 'web_in_store_purchase') {
+        if (av.action_type === 'purchase') {
           weeks[weekKey].revenue += parseFloat(av.value || 0);
         }
       }
@@ -221,6 +298,10 @@ async function fetchWeeklyData(accountId, since, until, includePreviousWeeks = 8
 
   return sorted.map((w, i) => {
     const conversions = conversionType === 'purchase' ? w.purchases : w.leads;
+    const completedRegistrations = w.completedRegistrations || 0;
+    const dropoff = Math.max((w.leads || 0) - completedRegistrations, 0);
+    const completionRate = w.leads > 0 ? completedRegistrations / w.leads * 100 : 0;
+    const dropoffRate = w.leads > 0 ? dropoff / w.leads * 100 : 0;
     const cpl = conversions > 0 ? w.spend / conversions : 0;
     const ctr = w.impressions > 0 ? (w.clicks / w.impressions * 100) : 0;
     const roas = w.revenue > 0 ? w.revenue / w.spend : 0;
@@ -237,6 +318,10 @@ async function fetchWeeklyData(accountId, since, until, includePreviousWeeks = 8
     return {
       ...w,
       conversions,
+      completedRegistrations,
+      dropoff,
+      completionRate,
+      dropoffRate,
       cpl,
       ctr,
       roas,
@@ -680,19 +765,184 @@ function buildLeadsPanel(weeklyData, width, height) {
   };
 }
 
+function buildDropoffPanel(weeklyData, width, height) {
+  const labels = weeklyData.map(w => w.label);
+  const sublabels = weeklyData.map(w => w.sublabel);
+  const leads = weeklyData.map(w => w.leads || 0);
+  const completed = weeklyData.map(w => w.completedRegistrations || 0);
+  const maxVolume = Math.max(...leads, ...completed, 10);
+
+  return {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Meta Leads',
+          data: leads,
+          backgroundColor: COLORS.leadsBarMain,
+          borderColor: COLORS.leadsBarBorder,
+          borderWidth: 1,
+          barPercentage: 0.8,
+          categoryPercentage: 0.78,
+        },
+        {
+          label: 'Completed Applications',
+          data: completed,
+          backgroundColor: COLORS.completedBarMain,
+          borderColor: COLORS.completedBarBorder,
+          borderWidth: 1,
+          barPercentage: 0.8,
+          categoryPercentage: 0.78,
+        }
+      ]
+    },
+    options: {
+      responsive: false,
+      layout: { padding: { top: 28, right: 15, bottom: 5, left: 5 } },
+      plugins: {
+        title: { display: false },
+        legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 10 } } },
+        tooltip: { enabled: false },
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: {
+            font: { size: 9, weight: 'bold' },
+            color: COLORS.darkText,
+            callback: function(val, idx) { return [labels[idx], sublabels[idx]]; }
+          }
+        },
+        y: {
+          type: 'linear', position: 'left',
+          title: { display: true, text: 'Lead → Completed Application Dropoff', color: COLORS.completedBarBorder, font: { size: 11, weight: 'bold' } },
+          grid: { color: COLORS.lightGrid },
+          ticks: { font: { size: 9 }, color: COLORS.grayText, stepSize: Math.max(1, Math.ceil(maxVolume / 5)) },
+          min: 0, max: Math.ceil(maxVolume * 1.25),
+          beginAtZero: true,
+        }
+      }
+    },
+    plugins: [{
+      id: 'dropoffAnnotations',
+      afterDraw: (chart) => {
+        const ctx = chart.ctx;
+        const leadMeta = chart.getDatasetMeta(0);
+        const completedMeta = chart.getDatasetMeta(1);
+        for (let i = 0; i < weeklyData.length; i++) {
+          const leadBar = leadMeta.data[i];
+          const completedBar = completedMeta.data[i];
+          const w = weeklyData[i];
+          if (!leadBar || !completedBar || !(w.leads > 0)) continue;
+
+          ctx.save();
+          ctx.font = 'bold 11px Arial';
+          ctx.fillStyle = '#374151';
+          ctx.textAlign = 'center';
+          ctx.fillText(String(w.leads || 0), leadBar.x, leadBar.y - 4);
+          ctx.fillText(String(w.completedRegistrations || 0), completedBar.x, completedBar.y - 4);
+
+          const label = `${(w.completionRate || 0).toFixed(0)}% complete`;
+          const midX = (leadBar.x + completedBar.x) / 2;
+          const labelY = Math.min(leadBar.y, completedBar.y) - 22;
+          const tw = ctx.measureText(label).width;
+          ctx.fillStyle = (w.completionRate || 0) >= 60 ? COLORS.annotationBgBest : COLORS.annotationBgWarn;
+          ctx.beginPath();
+          ctx.roundRect(midX - (tw + 14) / 2, labelY - 15, tw + 14, 20, 4);
+          ctx.fill();
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillText(label, midX, labelY);
+          ctx.restore();
+        }
+      }
+    }]
+  };
+}
+
 // ─── Composite Chart ───────────────────────────────────────────────────
 
-async function generateStackedChart(weeklyData, clientName, since, until) {
+function renderFunnelGraphicPanel(funnelData, width, height) {
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = COLORS.panelBg;
+  ctx.fillRect(0, 0, width, height);
+
+  const title = funnelData.title || 'Full Funnel: Meta → CRM Swim Lanes';
+  ctx.fillStyle = COLORS.darkText;
+  ctx.font = 'bold 22px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText(title, width / 2, 34);
+
+  ctx.font = '12px Arial';
+  ctx.fillStyle = COLORS.grayText;
+  ctx.fillText(funnelData.subtitle || 'Canonical Meta events + direct Pipedrive deal stages', width / 2, 55);
+
+  const stages = (funnelData.stages || []).filter(s => s && s.label);
+  const maxValue = Math.max(...stages.map(s => s.value || 0), 1);
+  const funnelTop = 78;
+  const funnelHeight = 150;
+  const gap = 8;
+  const rowH = Math.floor((funnelHeight - gap * (stages.length - 1)) / Math.max(stages.length, 1));
+  const centerX = width / 2;
+  const maxW = 980;
+  const minW = 260;
+  const palette = ['#10B981', '#3B82F6', '#6366F1', '#F59E0B', '#F97316', '#EF4444'];
+
+  stages.forEach((stage, i) => {
+    const value = stage.value || 0;
+    const ratio = Math.max(0.18, value / maxValue);
+    const barW = Math.max(minW, maxW * ratio);
+    const y = funnelTop + i * (rowH + gap);
+    const x = centerX - barW / 2;
+    ctx.fillStyle = palette[i % palette.length];
+    ctx.beginPath();
+    ctx.roundRect(x, y, barW, rowH, 10);
+    ctx.fill();
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 18px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(stage.label, x + 18, y + rowH / 2 + 6);
+    ctx.textAlign = 'right';
+    ctx.fillText(String(value), x + barW - 18, y + rowH / 2 + 6);
+  });
+
+  const notes = funnelData.notes || [];
+  const noteY = funnelTop + funnelHeight + 26;
+  ctx.textAlign = 'left';
+  ctx.font = 'bold 13px Arial';
+  ctx.fillStyle = COLORS.darkText;
+  ctx.fillText('CRM swim-lane readout', 90, noteY);
+  ctx.font = '12px Arial';
+  ctx.fillStyle = COLORS.grayText;
+  notes.slice(0, 3).forEach((note, i) => ctx.fillText(note, 90, noteY + 22 + i * 18));
+
+  if (funnelData.lossSummary && funnelData.lossSummary.length) {
+    ctx.textAlign = 'right';
+    ctx.font = 'bold 13px Arial';
+    ctx.fillStyle = COLORS.darkText;
+    ctx.fillText('Lost reason signal', width - 90, noteY);
+    ctx.font = '12px Arial';
+    ctx.fillStyle = COLORS.grayText;
+    funnelData.lossSummary.slice(0, 3).forEach((note, i) => ctx.fillText(note, width - 90, noteY + 22 + i * 18));
+  }
+
+  return canvas.toBuffer('image/png');
+}
+
+async function generateStackedChart(weeklyData, clientName, since, until, funnelData = null) {
   const totalWidth = 1200;
   const panelHeight = 300;
   const titleHeight = 70;
   const labelRowHeight = 30;
-  const totalHeight = titleHeight + (panelHeight * 3) + labelRowHeight;
+  const totalHeight = titleHeight + (panelHeight * 4) + labelRowHeight;
   
   // Generate each panel
   const cplConfig = buildCPLPanel(weeklyData, totalWidth, panelHeight);
   const ctrConfig = buildCTRPanel(weeklyData, totalWidth, panelHeight);
   const leadsConfig = buildLeadsPanel(weeklyData, totalWidth, panelHeight);
+  const dropoffConfig = funnelData ? null : buildDropoffPanel(weeklyData, totalWidth, panelHeight);
 
   // Determine conversion type for legend
   const conversionTypeItem3 = weeklyData.find(w => w.conversionType);
@@ -711,6 +961,10 @@ async function generateStackedChart(weeklyData, clientName, since, until) {
   const ctrBuffer = await chartRenderer.renderToBuffer(ctrConfig);
   console.log(`  Rendering ${isEcommerce ? 'Purchases' : 'Leads'} panel...`);
   const leadsBuffer = await chartRenderer.renderToBuffer(leadsConfig);
+  console.log(funnelData ? '  Rendering full funnel graphic panel...' : '  Rendering lead completion dropoff panel...');
+  const dropoffBuffer = funnelData
+    ? renderFunnelGraphicPanel(funnelData, totalWidth, panelHeight)
+    : await chartRenderer.renderToBuffer(dropoffConfig);
   
   // Composite onto one canvas
   console.log('  Compositing panels...');
@@ -762,6 +1016,14 @@ async function generateStackedChart(weeklyData, clientName, since, until) {
   
   const leadsImg = await loadImage(leadsBuffer);
   ctx.drawImage(leadsImg, 0, titleHeight + panelHeight * 2);
+
+  ctx.beginPath();
+  ctx.moveTo(60, titleHeight + panelHeight * 3);
+  ctx.lineTo(totalWidth - 60, titleHeight + panelHeight * 3);
+  ctx.stroke();
+
+  const dropoffImg = await loadImage(dropoffBuffer);
+  ctx.drawImage(dropoffImg, 0, titleHeight + panelHeight * 3);
   
   // Bottom label
   ctx.fillStyle = COLORS.grayText;
@@ -775,10 +1037,11 @@ async function generateStackedChart(weeklyData, clientName, since, until) {
     { color: COLORS.tealLine, label: isEcommerce ? 'CPP ($)' : 'CPL ($)', type: 'line' },
     { color: COLORS.maroonLine, label: 'CTR (%)', type: 'line' },
     { color: COLORS.leadsBarMain, label: isEcommerce ? 'Purchases' : 'Leads', type: 'bar' },
+    { color: funnelData ? '#6366F1' : COLORS.completedBarMain, label: funnelData ? 'CRM Funnel' : 'Completed Apps', type: 'bar' },
     { color: COLORS.spendBar, label: 'Spend ($)', type: 'bar' },
   ];
   
-  let lx = totalWidth / 2 - 200;
+  let lx = totalWidth / 2 - 260;
   for (const item of legendItems) {
     if (item.type === 'line') {
       ctx.strokeStyle = item.color;
