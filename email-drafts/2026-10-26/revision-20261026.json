@@ -1,0 +1,68 @@
+{
+ "subject": "Latest report and Jordan's new batch",
+ "body": "Hey team,\n\nHere's the latest performance report\nhttps://docs.google.com/document/d/17wPfuA2G0hpMCbzsxpToIpJp1JSqlaga/edit?usp=sharing\n\nWe generated 221 enquiries from A$1,197.74 across Victoria and Queensland, at A$5.42 each, with 78 completed applications.\n\nJordan's new batch is doing the heavy lifting. The videos spent A$428.43 for 90 enquiries at A$4.76 each, the statics spent A$149.39 for 24 enquiries at A$6.22 each. Together that's 48% of the spend and 114 of the 221 enquiries.\n\nDarren mentioned a lot of the people enquiring are renting. Worth adding home owners to the messaging as well?\n\nCheers\nWilliam",
+ "validation": "pass",
+ "jev_draft": {
+  "Here's the latest performance report": {
+   "supported": 0.72,
+   "real_action": 0.71
+  },
+  "We generated 221 enquiries from A$1,197.74 across Victoria a": {
+   "supported": 0.9,
+   "real_action": 0.62
+  },
+  "Jordan's new batch is doing the heavy lifting.": {
+   "supported": 0.77,
+   "real_action": 0.83
+  },
+  "The videos spent A$428.43 for 90 enquiries at A$4.76 each, t": {
+   "supported": 0.84,
+   "real_action": 0.82
+  },
+  "Together that's 48% of the spend and 114 of the 221 enquirie": {
+   "supported": 0.89,
+   "real_action": 0.84
+  },
+  "Darren mentioned a lot of the people enquiring are renting.": {
+   "supported": 0.62,
+   "real_action": 0.8
+  },
+  "Worth adding home owners to the messaging as well?": {
+   "supported": 0.61,
+   "real_action": 0.74
+  }
+ },
+ "link": "https://docs.google.com/document/d/17wPfuA2G0hpMCbzsxpToIpJp1JSqlaga/edit?usp=sharing",
+ "report_id": 343,
+ "window": [
+  "2026-10-19",
+  "2026-10-25"
+ ],
+ "batch_numbers": {
+  "videos_spend": 428.43,
+  "videos_enquiries": 90,
+  "videos_cpl": 4.76,
+  "statics_spend": 149.39,
+  "statics_enquiries": 24,
+  "statics_cpl": 6.22,
+  "share_of_spend_pct": 48,
+  "new_batch_enquiries": 114,
+  "window_spend": 1197.75,
+  "window_enquiries": 221,
+  "window_completed": 78
+ },
+ "receipt": "email-drafts/2026-10-26/jordan-batch-adlevel.csv",
+ "source": "Meta Graph v22.0 ad-level insights (same pull as the report) + Will's instruction on Darren's renter/home-owner feedback",
+ "sent": false,
+ "to": [
+  "Anton van den Berg <anton@boxdivvy.com.au>",
+  "Jayne Travers-Drapes <jayne@boxdivvy.com.au>",
+  "Darren Varney <darren@boxdivvy.com.au>"
+ ],
+ "cc": [
+  "Jordan B <jordan@boxdivvy.com.au>"
+ ],
+ "files": "/home/mgk/clawd/client-reports/email-drafts/2026-10-26/boxdivvy.eml",
+ "draft": "local only (gmail.compose not delegated to the service account)",
+ "superseded_intermediate": "an earlier revision in this session quoted A$1,197.75 (ad-level sum); the final draft quotes the report's A$1,197.74"
+}

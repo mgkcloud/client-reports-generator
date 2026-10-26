@@ -1,0 +1,139 @@
+[
+ {
+  "client": "Box Divvy",
+  "slug": "boxdivvy",
+  "status": "READY",
+  "flags": [
+   "The Member account needs a fresh readback because NSW Cessnock, NSW Cumberland and Brisbane Member 4118 were ACTIVE but unable to deliver after their ad-set end times passed.",
+   "The paused statuses of VIC West Melbourne and NSW West Sydney need a fresh account check.",
+   "Darren's request for an automated SMS reminder template remains outstanding.",
+   "The Hub Handover integration is still not copying hub details into Pipedrive.",
+   "The Property Owner field still needs \"Community Space\" added."
+  ],
+  "report_id": 343,
+  "headline": "Hubster recruitment across Victoria and Queensland generated 221 enquiries from A$1,197.74, at A$5.42 per enquiry. 78 completed applications were recorded, at A$15.36 per application. CTR was 5.70%. Key Metrics Period Spend Leads CPL CTR This Week A$1,197.74",
+  "link": "https://docs.google.com/document/d/17wPfuA2G0hpMCbzsxpToIpJp1JSqlaga/edit?usp=sharing",
+  "jev": "ran",
+  "items_kept": [
+   "Will is to review Jordan's version 2 ads, provide feedback and consider running them separately.",
+   "Jordan plans to try different scripts in the same style if the version 2 ads perform well.",
+   "Anton's question about whether AI-generated videos are still running in Victoria and when they will be phased out is still listed as open."
+  ],
+  "items_dropped": [
+   "Will is waiting for more data to assess the impact of the newly published statics and Jordan's video batch."
+  ],
+  "jev_draft": {
+   "Here's the latest performance report": {
+    "supported": 0.76,
+    "real_action": 0.89
+   },
+   "Across Victoria and Queensland, Hubster recruitment generate": {
+    "supported": 0.96,
+    "real_action": 0.87
+   },
+   "We recorded 78 completed applications at A$15.36 each, while": {
+    "supported": 0.87,
+    "real_action": 0.87
+   },
+   "I'm reviewing Jordan's version 2 ads now, then I'll send fee": {
+    "supported": 0.68,
+    "real_action": 0.95
+   },
+   "If they perform well, Jordan will test different scripts in ": {
+    "supported": 0.87,
+    "real_action": 0.93
+   },
+   "Anton, AI-generated videos are still running in Victoria, we": {
+    "supported": 0.76,
+    "real_action": 0.92
+   }
+  },
+  "subject": "Latest report and content feedback loop",
+  "body": "Hey team,\n\nHere's the latest performance report\nhttps://docs.google.com/document/d/17wPfuA2G0hpMCbzsxpToIpJp1JSqlaga/edit?usp=sharing\n\nAcross Victoria and Queensland, Hubster recruitment generated 221 enquiries from A$1,197.74, at A$5.42 per enquiry and 5.70% CTR. We recorded 78 completed applications at A$15.36 each, while Member campaigns had no delivery this period.\n\nI'm reviewing Jordan's version 2 ads now, then I'll send feedback and consider running them separately. If they perform well, Jordan will test different scripts in the same style. Anton, AI-generated videos are still running in Victoria, we're waiting on Jordan's second batch and Hubster hooks to replace those campaigns, and I can't confirm a phase-out date yet.\n\nCheers\nWilliam",
+  "validation": "pass",
+  "to": [
+   "Anton van den Berg <anton@boxdivvy.com.au>",
+   "Jayne Travers-Drapes <jayne@boxdivvy.com.au>",
+   "Darren Varney <darren@boxdivvy.com.au>"
+  ],
+  "cc": [
+   "Jordan B <jordan@boxdivvy.com.au>"
+  ],
+  "draft": "local only (gmail.compose not delegated to the service account)",
+  "files": "/home/mgk/clawd/client-reports/email-drafts/2026-10-26/boxdivvy.eml"
+ },
+ {
+  "subject": "Latest report and Jordan's new batch",
+  "body": "Hey team,\n\nHere's the latest performance report\nhttps://docs.google.com/document/d/17wPfuA2G0hpMCbzsxpToIpJp1JSqlaga/edit?usp=sharing\n\nWe generated 221 enquiries from A$1,197.74 across Victoria and Queensland, at A$5.42 each, with 78 completed applications.\n\nJordan's new batch is doing the heavy lifting. The videos spent A$428.43 for 90 enquiries at A$4.76 each, the statics spent A$149.39 for 24 enquiries at A$6.22 each. Together that's 48% of the spend and 114 of the 221 enquiries.\n\nDarren mentioned a lot of the people enquiring are renting. Worth adding home owners to the messaging as well?\n\nCheers\nWilliam",
+  "validation": "pass",
+  "jev_draft": {
+   "Here's the latest performance report": {
+    "supported": 0.72,
+    "real_action": 0.71
+   },
+   "We generated 221 enquiries from A$1,197.74 across Victoria a": {
+    "supported": 0.9,
+    "real_action": 0.62
+   },
+   "Jordan's new batch is doing the heavy lifting.": {
+    "supported": 0.77,
+    "real_action": 0.83
+   },
+   "The videos spent A$428.43 for 90 enquiries at A$4.76 each, t": {
+    "supported": 0.84,
+    "real_action": 0.82
+   },
+   "Together that's 48% of the spend and 114 of the 221 enquirie": {
+    "supported": 0.89,
+    "real_action": 0.84
+   },
+   "Darren mentioned a lot of the people enquiring are renting.": {
+    "supported": 0.62,
+    "real_action": 0.8
+   },
+   "Worth adding home owners to the messaging as well?": {
+    "supported": 0.61,
+    "real_action": 0.74
+   }
+  },
+  "link": "https://docs.google.com/document/d/17wPfuA2G0hpMCbzsxpToIpJp1JSqlaga/edit?usp=sharing",
+  "report_id": 343,
+  "window": [
+   "2026-10-19",
+   "2026-10-25"
+  ],
+  "batch_numbers": {
+   "videos_spend": 428.43,
+   "videos_enquiries": 90,
+   "videos_cpl": 4.76,
+   "statics_spend": 149.39,
+   "statics_enquiries": 24,
+   "statics_cpl": 6.22,
+   "share_of_spend_pct": 48,
+   "new_batch_enquiries": 114,
+   "window_spend": 1197.75,
+   "window_enquiries": 221,
+   "window_completed": 78
+  },
+  "receipt": "email-drafts/2026-10-26/jordan-batch-adlevel.csv",
+  "source": "Meta Graph v22.0 ad-level insights (same pull as the report) + Will's instruction on Darren's renter/home-owner feedback",
+  "sent": false,
+  "to": [
+   "Anton van den Berg <anton@boxdivvy.com.au>",
+   "Jayne Travers-Drapes <jayne@boxdivvy.com.au>",
+   "Darren Varney <darren@boxdivvy.com.au>"
+  ],
+  "cc": [
+   "Jordan B <jordan@boxdivvy.com.au>"
+  ],
+  "files": "/home/mgk/clawd/client-reports/email-drafts/2026-10-26/boxdivvy.eml",
+  "draft": "local only (gmail.compose not delegated to the service account)",
+  "supersedes": [
+   {
+    "subject": "Latest report and Jordan's new batch",
+    "window_spend_in_body": 1197.75,
+    "reason": "intermediate revision used ad-level total (A$1,197.75); final uses the report headline (A$1,197.74)"
+   }
+  ]
+ }
+]
